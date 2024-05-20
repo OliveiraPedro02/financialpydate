@@ -1,2 +1,2 @@
-# FinancialTimeHandler
-Python library to create cashflows, handling day count conventions, etc
+# Financial pyDate
+Python library to create cashflows and derive day count conventions using python.
