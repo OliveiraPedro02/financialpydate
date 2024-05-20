@@ -21,14 +21,9 @@ jobs:
     - name: Install dependencies
       run: |
         conda env update --file environment.yml --name base
-
-  python-test:
-    needs: build-linux
-    steps:
     - name: myPy
       run: |
         mypy .
-      
-    - name: Test with pytest
+    - name: pytest
       run: |
         pytest test
