@@ -1,0 +1,14 @@
+[tool.pytest.ini_options]
+pythonpath = [
+    ".", "src", "test"
+]
+
+[tool.ruff]
+line-length = 120
+src = ["src", "test", "."]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
