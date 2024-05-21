@@ -5,10 +5,7 @@ import numpy.typing as npt
 
 from date_handler import day, add_month_day, month
 from rule import Rule
-from update_files.convention import Convention
-
-CDS_2015_BASE_MONTHS = np.array([0, 3, 6, 9, 12])
-DELTAS = [3, 2, 1]
+from convention import Convention
 
 
 def previous_twentieth(date: np.datetime64, rule: Rule) -> np.datetime64:
@@ -40,10 +37,16 @@ def next_twentieth(date: np.datetime64, rule: Rule) -> np.datetime64:
 
 
 class FinancialCalendar:
-    __sluts__ = ('_stub_days_old_cds', '_calendar')
-    _stub_days_old_cds: np.timedelta64 = np.timedelta64(30, 'D')
+    __slots__ = (
+        '_stub_days_old_cds',
+        '_calendar',
+        '_one_day_time_delta',
+        '_nineteen_days_time_delta',
+    )
 
     def __init__(self, holidays: npt.NDArray[np.datetime64], weekmask: str | npt.NDArray[np.bool_] | None = None):
+        self._stub_days_old_cds: np.timedelta64 = np.timedelta64(30, 'D')
+        self._one_day_time_delta: np.timedelta64 = np.timedelta64(1, 'D')
         if weekmask is None:
             self._calendar = np.busdaycalendar(holidays=holidays)
         else:
@@ -97,8 +100,8 @@ class FinancialCalendar:
     ) -> npt.NDArray[np.datetime64]:
         final_dates = self._get_cds_date_range(termination_date, termination_convention, False)
         next_twentieth_date = next_twentieth(effective_date, Rule.old_CDS)
-        if next_twentieth_date - effective_date < np.timedelta64(30, 'D'):
-            next_twentieth_date = next_twentieth(next_twentieth_date + np.timedelta64(1, 'D'), Rule.old_CDS)
+        if next_twentieth_date - effective_date < self._stub_days_old_cds:
+            next_twentieth_date = next_twentieth(next_twentieth_date + self._one_day_time_delta, Rule.old_CDS)
         if next_twentieth_date != effective_date:
             dates = np.arange(next_twentieth_date, final_dates[0] + period, period) + np.timedelta64(19, 'D')
             return np.r_[effective_date, dates, final_dates[-1]]
@@ -131,8 +134,8 @@ class FinancialCalendar:
     ) -> npt.NDArray[np.datetime64]:
         final_dates = self._get_cds_date_range(termination_date, termination_convention, False)
         next_twentieth_date = next_twentieth(effective_date, Rule.old_CDS)
-        if next_twentieth_date - effective_date < np.timedelta64(30, 'D'):
-            next_twentieth_date = next_twentieth(next_twentieth_date + np.timedelta64(1, 'D'), Rule.old_CDS)
+        if next_twentieth_date - effective_date < self._stub_days_old_cds:
+            next_twentieth_date = next_twentieth(next_twentieth_date + self._one_day_time_delta, Rule.old_CDS)
         if next_twentieth_date != effective_date:
             dates = np.arange(
                 next_twentieth_date.astype('datetime64[M]'), final_dates[0] + period, period
@@ -369,7 +372,7 @@ class FinancialCalendar:
                     _convention = Rule.backward
                 make_schedule_function = self._monthly_date_generation
             case _:
-                raise NotImplemented  # (f'Period {period} of type {period.dtype} is not implemented.')
+                raise NotImplementedError  # (f'Period {period} of type {period.dtype} is not implemented.')
 
         dates = make_schedule_function(
             start_date, end_date, period, _end_of_month, rule, convention, termination_convention

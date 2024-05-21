@@ -4,7 +4,7 @@ import pytest
 from date_handler import month
 from calendars.all_calendar import all_calendars
 from rule import Rule
-from update_files.convention import Convention
+from convention import Convention
 
 
 def previous_twentieth(date: np.datetime64, rule: Rule):

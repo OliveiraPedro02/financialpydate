@@ -9,7 +9,7 @@ def get_holidays(calendar: ql.Calendar) -> tuple:
     try:
         return tuple(
             date.to_date().strftime('%Y-%m-%d')
-            for date in calendar.holidayList(minimum_date, maximum_date, includeWeekEnds=False)
+            for date in calendar.holidayList(minimum_date, maximum_date, includeWeekEnds=True)
         )
     except RuntimeError:
         print(f'{calendar.name()} has no holidays')

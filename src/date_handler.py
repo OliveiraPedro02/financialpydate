@@ -1,6 +1,6 @@
-from functools import singledispatch
 from typing import overload
 
+import numba
 import numpy as np
 import numpy.typing as npt
 
@@ -23,20 +23,21 @@ def isleap(year: int) -> np.bool_: ...
 
 
 @overload
-def isleap(year: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]: ...
+def isleap(year: npt.NDArray[np.uint]) -> npt.NDArray[np.bool_]: ...
 
 
+@numba.njit(fastmath=True, cache=True)
 def isleap(year):
     """Return True for leap years, False for non-leap years."""
     return (year % 4 == 0) & ((year % 100 != 0) | (year % 400 == 0))
 
 
 @overload
-def day(date: np.datetime64) -> np.int_: ...
+def day(date: np.datetime64) -> np.uint: ...
 
 
 @overload
-def day(date: npt.NDArray[np.datetime64]) -> npt.NDArray[np.int_]: ...
+def day(date: npt.NDArray[np.datetime64]) -> npt.NDArray[np.uint]: ...
 
 
 def day(date):
@@ -44,11 +45,11 @@ def day(date):
 
 
 @overload
-def month(date: np.datetime64) -> np.int_: ...
+def month(date: np.datetime64) -> np.uint: ...
 
 
 @overload
-def month(date: npt.NDArray[np.datetime64]) -> npt.NDArray[np.int_]: ...
+def month(date: npt.NDArray[np.datetime64]) -> npt.NDArray[np.uint]: ...
 
 
 def month(date):
@@ -56,13 +57,11 @@ def month(date):
 
 
 @overload
-def year(date: np.datetime64) -> int:
-    return date.astype('datetime64[Y]').astype(int) + 1970
+def year(date: np.datetime64) -> int: ...
 
 
 @overload
-def year(date: npt.NDArray[np.datetime64]) -> npt.NDArray[np.int_]:
-    return date.astype('datetime64[Y]').astype(int) + 1970
+def year(date: npt.NDArray[np.datetime64]) -> npt.NDArray[np.uint]: ...
 
 
 def year(date):
@@ -96,61 +95,30 @@ def _is_last_day_of_feb(date):
     return (month(date) == 2) & (day(date) == last_of_month)
 
 
-def add_month_day(dates: npt.NDArray[np.datetime64], day: int | np.int_) -> npt.NDArray[np.datetime64]:
-    max_days = np.minimum([28, 29, 30, 31], day).astype('timedelta64[D]') - 1
-    months = month(dates)
-    feb_mask = 2 == months
-    not_feb_mask = ~feb_mask
-    even_months = months % 2 == 0
-    days_31 = (~even_months & (months < 7)) | (even_months & (months > 7))
-    days_30 = ~days_31 & not_feb_mask
+def add_month_day(dates: npt.NDArray[np.datetime64], day: int | np.uint) -> npt.NDArray[np.datetime64]:
+    if day <= 28:
+        return dates + np.timedelta64(day - 1, 'D')
     leap_year = isleap(year(dates))
-    new_dates = dates.astype('datetime64[D]', copy=False)
-    new_dates[feb_mask & ~leap_year] += max_days[0]
-    new_dates[feb_mask & leap_year] += max_days[1]
-    new_dates[days_30] += max_days[2]
-    new_dates[days_31] += max_days[3]
-    return new_dates
-
-
-@singledispatch
-def is_last_day_of_month(dates):
-    raise ValueError(f'dates must be of type numpy.datetime64 or a numpy.array of numpy.datetime64')
-
-
-@is_last_day_of_month.register(np.datetime64)
-def _(dates: np.datetime64) -> bool:
-    max_days = np.array([28, 29, 30, 31], dtype='timedelta64[D]')
     months = month(dates)
-    feb_mask = 2 == months
-    months = month(dates)
-    if feb_mask:
-        if isleap(year(dates)):
-            return day(dates) == max_days[1]
-        return day(dates) == max_days[0]
-
-    even_month = months % 2 == 0
-    days_31 = (~even_month & (months < 7)) | (even_month & (months > 9))
-    if days_31:
-        return day(dates) == max_days[3]
-
-    return day(dates) == max_days[2]
+    days = nb_add_month_day(months, leap_year, day)
+    return dates + days.astype('timedelta64[D]')
 
 
-@is_last_day_of_month.register(np.ndarray)
-def _(dates: npt.NDArray[np.datetime64]) -> npt.NDArray[np.bool_]:
-    max_days = np.array([28, 29, 30, 31], dtype='timedelta64[D]')
-    months = month(dates)
-    feb_mask = 2 == months
-    days = day(dates)
-    not_feb_mask = ~feb_mask
-    even_months = months % 2 == 0
-    days_31 = (~even_months & (months < 7)) | (even_months & (months > 9))
-    days_30 = ~days_31 & not_feb_mask
-    leap_year = isleap(year(dates))
-    is_end_of_dates = np.zeros_like(feb_mask, dtype=np.bool_)
-    is_end_of_dates[feb_mask & ~leap_year] = days[feb_mask & ~leap_year] == max_days[0]
-    is_end_of_dates[feb_mask & leap_year] = days[feb_mask & leap_year] == max_days[1]
-    is_end_of_dates[days_30] = days[days_30] == max_days[2]
-    is_end_of_dates[days_31] = days[days_31] == max_days[3]
-    return is_end_of_dates
+@numba.njit(cache=True)
+def nb_add_month_day(
+    months: npt.NDArray[np.uint], is_leap_year: npt.NDArray[np.bool_], day: npt.NDArray[np.uint64]
+) -> npt.NDArray[np.uint64]:
+    max_days = np.minimum(np.array([28, 29, 30, 31], np.int64), day) - 1
+    days = np.empty_like(months, np.uint64)
+    for i, _month in enumerate(months):
+        if _month == 2:
+            if is_leap_year[i]:
+                days[i] = max_days[1]
+            else:
+                days[i] = max_days[0]
+        else:
+            if _month % 2 != 0 and _month < 7 or _month % 2 == 0 and _month > 7:
+                days[i] = max_days[3]
+            else:
+                days[i] = max_days[2]
+    return days
