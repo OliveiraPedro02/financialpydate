@@ -68,6 +68,7 @@ exclude = [
     "node_modules",
     "site-packages",
     "venv",
+    "__init__.py"
 ]
 
 [tool.ruff.lint]
