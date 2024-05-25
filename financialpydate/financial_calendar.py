@@ -1,4 +1,5 @@
-from typing import overload
+from functools import reduce
+from typing import overload, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -48,9 +49,17 @@ class FinancialCalendar:
         self._stub_days_old_cds: np.timedelta64 = np.timedelta64(30, 'D')
         self._one_day_time_delta: np.timedelta64 = np.timedelta64(1, 'D')
         if weekmask is None:
-            self._calendar = np.busdaycalendar(holidays=holidays)
+            self._calendar = np.busdaycalendar(holidays=holidays, weekmask='1111111')
         else:
             self._calendar = np.busdaycalendar(holidays=holidays, weekmask=weekmask)
+
+    @property
+    def holidays(self):
+        return self._calendar.holidays
+
+    @property
+    def weekmask(self):
+        return self._calendar.weekmask
 
     @property
     def numpy_calendar(self) -> np.busdaycalendar:
@@ -414,3 +423,16 @@ class FinancialCalendar:
             raise ValueError('Dates must have at least one date')
 
         return np.unique(np.r_[from_date, dates[dates >= from_date]])
+
+
+def join_calendars(calendars: Sequence[FinancialCalendar]) -> FinancialCalendar:
+    weekmasks = []
+    holidays_dates = []
+    for calendar in calendars:
+        weekmasks.append(calendar.weekmask)
+        holidays_dates.append(calendar.holidays)
+
+    weekmask = reduce(np.multiply, weekmasks)
+    unique_dates = np.unique(np.r_[*holidays_dates])
+
+    return FinancialCalendar(holidays=unique_dates, weekmask=weekmask)
