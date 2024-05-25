@@ -2,7 +2,7 @@ import datetime as dt
 
 import numpy as np
 import QuantLib as ql
-from day_counter import (
+from financialpydate.day_counter import (
     Actual360,
     Actual365,
     ActualActual,
@@ -15,7 +15,7 @@ from day_counter import (
 )
 
 # from update_files.get_holidays import holiday_list_numpy
-from calendars.all_calendar import all_calendars
+from financialpydate.calendars.all_calendar import all_calendars
 
 
 class BaseStructure:

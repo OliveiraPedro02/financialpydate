@@ -1,0 +1,44 @@
+{% set name = "financialpydate" %}
+{% set version = "0.0.1" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/OliveiraPedro02/financialpydate/archive/{{ version }}.tar.gz
+  sha256: 0885ccb1b8f0a4bca46379ab9ff40a2b88932f12f529e7841be0475b5e7757b1
+
+build:
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  number: 0
+
+requirements:
+  host:
+    - python >=3.11
+    - setuptools >=61
+    - setuptools-scm >=6.2
+    - pip
+  run:
+    - python >=3.11
+    - numpy >=1.26
+    - numba ==0.59.1
+
+test:
+  imports:
+    - financialpydate
+  commands:
+    - pip check
+  requires:
+    - pip
+
+about:
+  summary: Project with financial dates and generate cashflows schedules
+  dev_url: https://github.com/OliveiraPedro02/financialpydate
+  license: MIT
+  license_file: LICENSE
+
+extra:
+  recipe-maintainers:
+    - kanytu
