@@ -5,6 +5,7 @@ from financialpydate.date_handler import month
 from financialpydate.calendars.all_calendar import all_calendars
 from financialpydate.rule import Rule
 from financialpydate.convention import Convention
+from financialpydate.financial_calendar import join_calendars, FinancialCalendar
 
 
 def previous_twentieth(date: np.datetime64, rule: Rule):
@@ -34,6 +35,14 @@ def cds_maturity(date: np.datetime64, period: np.timedelta64, rule: Rule) -> str
         return str(maturity)
 
     raise ValueError(f'Maturity {maturity} is past the trade date {date}')
+
+
+def test_join_calendars():
+    calendar_one: FinancialCalendar = all_calendars['Target']
+    calendar_two: FinancialCalendar = all_calendars['Brazil']
+    new_calendar = join_calendars([all_calendars['Target'], all_calendars['Brazil']])
+    assert np.all(new_calendar.weekmask == np.repeat(True, 7))
+    assert np.all(new_calendar.holidays == np.unique(np.r_[calendar_one.holidays, calendar_two.holidays]))
 
 
 def test_daily_freq():

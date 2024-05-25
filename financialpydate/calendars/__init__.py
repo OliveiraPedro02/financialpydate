@@ -1,4 +1,6 @@
 from financialpydate.calendars.argentina_merval import Argentina_Merval
+from financialpydate.calendars.australia import Australia
+from financialpydate.calendars.brazil import Brazil
 from financialpydate.calendars.brazil_exchange import Brazil_Exchange
 from financialpydate.calendars.brazil_settlement import Brazil_Settlement
 from financialpydate.calendars.canada_settlement import Canada_Settlement
@@ -8,6 +10,7 @@ from financialpydate.calendars.china_sse import China_SSE
 from financialpydate.calendars.czech_republic_pse import CzechRepublic_PSE
 from financialpydate.calendars.france_exchange import France_Exchange
 from financialpydate.calendars.france_settlement import France_Settlement
+from financialpydate.calendars.germany import Germany
 from financialpydate.calendars.germany_eurex import Germany_Eurex
 from financialpydate.calendars.germany_frankfurtstockexchange import Germany_FrankfurtStockExchange
 from financialpydate.calendars.germany_settlement import Germany_Settlement
@@ -31,9 +34,12 @@ from financialpydate.calendars.singapore_sgx import Singapore_SGX
 from financialpydate.calendars.slovakia_bsse import Slovakia_BSSE
 from financialpydate.calendars.south_korea_krx import SouthKorea_KRX
 from financialpydate.calendars.south_korea_settlement import SouthKorea_Settlement
+from financialpydate.calendars.sweden import Sweden
+from financialpydate.calendars.switzerland import Switzerland
 from financialpydate.calendars.taiwan_tsec import Taiwan_TSEC
 from financialpydate.calendars.target import Target
 from financialpydate.calendars.ukraine_use import Ukraine_USE
+from financialpydate.calendars.united_kingdom import UnitedKingdom
 from financialpydate.calendars.united_kingdom_exchange import UnitedKingdom_Exchange
 from financialpydate.calendars.united_kingdom_metals import UnitedKingdom_Metals
 from financialpydate.calendars.united_kingdom_settlement import UnitedKingdom_Settlement
