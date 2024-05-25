@@ -89,7 +89,7 @@ if __name__ == '__main__':
     for key, value in holiday_list_string.items():
         file_name = get_file_name(key)
         class_name = get_class_name(key)
-        with open('../../src/calendars/' + file_name + '.py', 'w') as file:
+        with open('../../financialpydate/calendars/' + file_name + '.py', 'w') as file:
             file.write(
                 f"""import numpy as np
 from financial_calendar import FinancialCalendar
@@ -99,7 +99,7 @@ from financial_calendar import FinancialCalendar
 """
             )
 
-    with open('../../src/calendars/all_calendar.py', 'w') as file:
+    with open('../calendars/all_calendar.py', 'w') as file:
         to_write = """import numpy as np
 from financial_calendar import FinancialCalendar
 
