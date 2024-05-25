@@ -5,7 +5,7 @@ from financialpydate.date_handler import month
 from financialpydate.calendars.all_calendar import all_calendars
 from financialpydate.rule import Rule
 from financialpydate.convention import Convention
-from financialpydate.financial_calendar import join_calendars, FinancialCalendar
+from financialpydate.financial_calendar import join_calendars
 
 
 def previous_twentieth(date: np.datetime64, rule: Rule):
@@ -38,11 +38,23 @@ def cds_maturity(date: np.datetime64, period: np.timedelta64, rule: Rule) -> str
 
 
 def test_join_calendars():
-    calendar_one: FinancialCalendar = all_calendars['Target']
-    calendar_two: FinancialCalendar = all_calendars['Brazil']
+    calendar_one = all_calendars['Target']
+    calendar_two = all_calendars['Brazil']
     new_calendar = join_calendars([all_calendars['Target'], all_calendars['Brazil']])
     assert np.all(new_calendar.weekmask == np.repeat(True, 7))
     assert np.all(new_calendar.holidays == np.unique(np.r_[calendar_one.holidays, calendar_two.holidays]))
+
+
+def test_unadjusted_offsets():
+    date = np.datetime64('1996-08-22')
+    calendar = all_calendars['Target']
+    assert calendar.offset(date, np.timedelta64(1, 'D')) == np.datetime64('1996-08-23')
+    assert calendar.offset(date, np.timedelta64(1, 'W')) == np.datetime64('1996-08-29')
+    assert calendar.offset(date, np.timedelta64(1, 'M')) == np.datetime64('1996-09-22')
+    assert calendar.offset(date, np.timedelta64(1, 'Y')) == np.datetime64('1997-08-22')
+    assert calendar.offset(date, np.timedelta64(1, 'Y')) == np.datetime64('1997-08-22')
+    assert calendar.offset(np.datetime64('1996-01-31'), np.timedelta64(1, 'M')) == np.datetime64('1996-02-29')
+    assert calendar.offset(np.datetime64('1996-02-29'), np.timedelta64(1, 'Y')) == np.datetime64('1997-02-28')
 
 
 def test_daily_freq():
