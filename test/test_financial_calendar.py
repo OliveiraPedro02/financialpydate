@@ -5,7 +5,7 @@ from financialpydate.date_handler import month
 from financialpydate.calendars.all_calendar import all_calendars
 from financialpydate.rule import Rule
 from financialpydate.convention import Convention
-from financialpydate.financial_calendar import join_calendars
+from financialpydate.financial_calendar import join_calendars, FinancialCalendar
 
 
 def previous_twentieth(date: np.datetime64, rule: Rule):
@@ -35,6 +35,23 @@ def cds_maturity(date: np.datetime64, period: np.timedelta64, rule: Rule) -> str
         return str(maturity)
 
     raise ValueError(f'Maturity {maturity} is past the trade date {date}')
+
+
+def test_backward_convention():
+    calendar: FinancialCalendar = all_calendars["NullCalendar"]
+    effective_date = np.datetime64("2023-01-01")
+    terminantion_date = np.datetime64("2023-08-01")
+    dates = calendar.make_schedule(
+        effective_date=effective_date,
+        termination_date=terminantion_date,
+        period=np.timedelta64(3, "M"),
+        convention=Convention.unadjusted,
+        termination_convention=Convention.unadjusted,
+        rule=Rule.backward,
+        end_of_month=False,
+    )
+    assert effective_date == dates[0]
+    assert terminantion_date == dates[-1]
 
 
 def test_join_calendars():
