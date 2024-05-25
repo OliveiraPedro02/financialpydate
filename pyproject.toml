@@ -28,19 +28,19 @@ testing = [
 
 [tool.pytest.ini_options]
 pythonpath = [
-    ".", "src", "test"
+    ".", "financialpydate", "test"
 ]
 
 [project.urls]
 Source = "https://github.com/OliveiraPedro02/financialpydate"
 
 [tool.setuptools.packages.find]
-include = ["src.*"]
+include = ["financialpydate.*"]
 
 
 [tool.ruff]
 line-length = 120
-src = ["src", "test", "."]
+src = ["financialpydate", "test", "."]
 exclude = [
     ".bzr",
     ".direnv",
