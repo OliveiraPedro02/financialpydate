@@ -1,7 +1,42 @@
+[build-system]
+requires = ["setuptools >=61", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "financialpydate"
+authors = [
+    { name = "Pedro Henrique Rezende Oliveira", email = "pedro-henrique.rezende@solvaypostgrad.net" },
+]
+description = "Project with financial dates and generate cashflows schedules"
+readme = "README.md"
+keywords = ["conda"]
+license = { text = "MIT" }
+dynamic = ["version"]
+requires-python = ">=3.11"
+dependencies = [
+  "numpy >= 1.26",
+  "numba == 0.59.1",
+]
+
+[project.optional-dependencies]
+testing = [
+    "QuantLib",
+    "pytest",
+    "mypy",
+    "ruff",
+]
+
 [tool.pytest.ini_options]
 pythonpath = [
     ".", "src", "test"
 ]
+
+[project.urls]
+Source = "https://github.com/OliveiraPedro02/financialpydate"
+
+[tool.setuptools.packages.find]
+include = ["src.*"]
+
 
 [tool.ruff]
 line-length = 120
