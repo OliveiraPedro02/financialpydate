@@ -301,24 +301,25 @@ class FinancialCalendar:
     ) -> npt.NDArray[np.datetime64]: ...
 
     def offset(self, dates, offset, roll: Convention = Convention.unadjusted):
-        if roll == Convention.unadjusted:
-            if isinstance(offset, int):
-                return dates + offset
-            elif offset.dtype in ['<m8[D]', '<m8[W]', "int"]:
-                return dates + offset
-            elif offset.dtype in ['<m8[M]', '<m8[Y]']:
-                monthly_dates = dates.astype('datetime64[M]')
-                dt_days = dates - monthly_dates
-                offset_date = monthly_dates + offset
-                extra_offset = offset_date + np.timedelta64(1, 'M')
-                dt_month = (extra_offset.astype('M8[D]') - offset_date) - 1
-                return np.where(
-                    dt_month >= dt_days, (monthly_dates + offset) + dt_days, (monthly_dates + offset) + dt_month
-                )
-            else:
-                raise NotImplementedError
+        if isinstance(offset, int):
+            rolled_date = dates + offset
+        elif offset.dtype in ['<m8[D]', '<m8[W]', 'int']:
+            rolled_date = dates + offset
+        elif offset.dtype in ['<m8[M]', '<m8[Y]']:
+            monthly_dates = dates.astype('datetime64[M]')
+            dt_days = dates - monthly_dates
+            offset_date = monthly_dates + offset
+            extra_offset = offset_date + np.timedelta64(1, 'M')
+            dt_month = (extra_offset.astype('M8[D]') - offset_date) - 1
+            rolled_date = np.where(
+                dt_month >= dt_days, (monthly_dates + offset) + dt_days, (monthly_dates + offset) + dt_month
+            )
+        else:
+            raise NotImplementedError
 
-        return np.busday_offset(dates + offset, 0, roll.value, busdaycal=self._calendar)
+        if roll == Convention.unadjusted:
+            return rolled_date
+        return np.busday_offset(rolled_date, 0, roll.value, busdaycal=self._calendar)
 
     @overload
     def working_days_offset(
