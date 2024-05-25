@@ -36,9 +36,7 @@ Source = "https://github.com/OliveiraPedro02/financialpydate"
 
 [tool.setuptools.packages.find]
 where = ["financialpydate"]
-include = ["*.py", "financialpydate.*"]
-namespaces = false
-
+include = ["*"]
 
 [tool.ruff]
 line-length = 120
