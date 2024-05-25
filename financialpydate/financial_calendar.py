@@ -302,7 +302,21 @@ class FinancialCalendar:
 
     def offset(self, dates, offset, roll: Convention = Convention.unadjusted):
         if roll == Convention.unadjusted:
-            return dates + offset
+            if isinstance(offset, int):
+                return dates + offset
+            elif offset.dtype in ['<m8[D]', '<m8[W]', "int"]:
+                return dates + offset
+            elif offset.dtype in ['<m8[M]', '<m8[Y]']:
+                monthly_dates = dates.astype('datetime64[M]')
+                dt_days = dates - monthly_dates
+                offset_date = monthly_dates + offset
+                extra_offset = offset_date + np.timedelta64(1, 'M')
+                dt_month = (extra_offset.astype('M8[D]') - offset_date) - 1
+                return np.where(
+                    dt_month >= dt_days, (monthly_dates + offset) + dt_days, (monthly_dates + offset) + dt_month
+                )
+            else:
+                raise NotImplementedError
 
         return np.busday_offset(dates + offset, 0, roll.value, busdaycal=self._calendar)
 
