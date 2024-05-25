@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
 
-from date_handler import month
-from calendars.all_calendar import all_calendars
-from rule import Rule
-from convention import Convention
+from financialpydate.date_handler import month
+from financialpydate.calendars.all_calendar import all_calendars
+from financialpydate.rule import Rule
+from financialpydate.convention import Convention
 
 
 def previous_twentieth(date: np.datetime64, rule: Rule):
