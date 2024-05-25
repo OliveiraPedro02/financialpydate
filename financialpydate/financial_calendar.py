@@ -187,6 +187,7 @@ class FinancialCalendar:
                 start_date = effective_date.astype('datetime64[M]')
                 end_date = termination_date.astype('datetime64[M]')
                 dates = np.arange(end_date, start_date - period, -period)
+                dates = dates[dates >= start_date]
 
                 if end_of_month:
                     dates = add_month_day(dates, 31)
