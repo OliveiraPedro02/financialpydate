@@ -35,7 +35,6 @@ pythonpath = [
 Source = "https://github.com/OliveiraPedro02/financialpydate"
 
 [tool.setuptools.packages.find]
-where = ["financialpydate"]
 include = ["*"]
 
 [tool.ruff]
