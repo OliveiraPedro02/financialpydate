@@ -183,11 +183,13 @@ class FinancialCalendar:
                 if dates[-1] != termination_date:
                     dates = np.r_[dates, termination_date]
 
+                dates = dates[dates <= termination_date]
+
+
             case Rule.backward:
                 start_date = effective_date.astype('datetime64[M]')
                 end_date = termination_date.astype('datetime64[M]')
                 dates = np.arange(end_date, start_date - period, -period)
-                dates = dates[dates >= start_date]
 
                 if end_of_month:
                     dates = add_month_day(dates, 31)
@@ -198,6 +200,7 @@ class FinancialCalendar:
                 if dates[-1] != effective_date:
                     dates = np.r_[dates, effective_date]
 
+                dates = dates[dates >= effective_date]
                 dates = dates[::-1]
 
             case Rule.CDS_2015:
@@ -238,12 +241,14 @@ class FinancialCalendar:
                 dates = np.arange(effective_date, termination_date, period, dtype='datetime64[D]')
                 if dates[-1] != termination_date:
                     dates = np.r_[dates, termination_date]
+                dates = dates[dates <= termination_date]
 
             case Rule.backward:
                 dates = np.arange(termination_date, effective_date, -period, dtype='datetime64[D]')
                 if dates[-1] != effective_date:
                     dates = np.r_[dates, effective_date]
 
+                dates = dates[dates >= effective_date]
                 dates = dates[::-1]
 
             case Rule.CDS_2015:
