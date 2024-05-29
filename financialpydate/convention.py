@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Self
 
 
 class Convention(str, Enum):
@@ -19,7 +18,7 @@ class Convention(str, Enum):
     unadjusted = 'unadjusted'
 
     @property
-    def inverse(self) -> Self:
+    def inverse(self) -> "Convention":
         match self:
             case Convention.following:
                 return Convention.preceding
