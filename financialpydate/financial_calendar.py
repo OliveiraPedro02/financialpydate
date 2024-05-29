@@ -352,7 +352,7 @@ class FinancialCalendar:
 
     def working_days_offset(self, dates, offset, roll: Convention = Convention.unadjusted):
         if roll == Convention.unadjusted:
-            return np.busday_offset(dates, offset)
+            return np.busday_offset(dates, offset, Convention.following, busdaycal=self._calendar)
 
         return np.busday_offset(dates, offset, roll.value, busdaycal=self._calendar)
 
