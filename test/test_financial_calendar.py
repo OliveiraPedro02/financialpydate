@@ -38,13 +38,13 @@ def cds_maturity(date: np.datetime64, period: np.timedelta64, rule: Rule) -> str
 
 
 def test_backward_convention():
-    calendar: FinancialCalendar = all_calendars["NullCalendar"]
-    effective_date = np.datetime64("2023-01-01")
-    terminantion_date = np.datetime64("2023-08-01")
+    calendar: FinancialCalendar = all_calendars['NullCalendar']
+    effective_date = np.datetime64('2023-01-01')
+    terminantion_date = np.datetime64('2023-08-01')
     dates = calendar.make_schedule(
         effective_date=effective_date,
         termination_date=terminantion_date,
-        period=np.timedelta64(3, "M"),
+        period=np.timedelta64(3, 'M'),
         convention=Convention.unadjusted,
         termination_convention=Convention.unadjusted,
         rule=Rule.backward,

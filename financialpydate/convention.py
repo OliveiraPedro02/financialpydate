@@ -16,3 +16,19 @@ class Convention(str, Enum):
     modifiedfollowing = 'modifiedfollowing'
     modifiedpreceding = 'modifiedpreceding'
     unadjusted = 'unadjusted'
+
+    @property
+    def inverse(self) -> "Convention":
+        match self:
+            case Convention.following:
+                return Convention.preceding
+            case Convention.preceding:
+                return Convention.following
+            case Convention.modifiedfollowing:
+                return Convention.modifiedpreceding
+            case Convention.modifiedpreceding:
+                return Convention.modifiedfollowing
+            case Convention.unadjusted:
+                return Convention.unadjusted
+            case _:
+                NotImplementedError

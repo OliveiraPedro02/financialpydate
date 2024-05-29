@@ -185,7 +185,6 @@ class FinancialCalendar:
 
                 dates = dates[dates <= termination_date]
 
-
             case Rule.backward:
                 start_date = effective_date.astype('datetime64[M]')
                 end_date = termination_date.astype('datetime64[M]')
@@ -353,7 +352,7 @@ class FinancialCalendar:
 
     def working_days_offset(self, dates, offset, roll: Convention = Convention.unadjusted):
         if roll == Convention.unadjusted:
-            return np.busday_offset(dates, offset)
+            return np.busday_offset(dates, offset, Convention.following.value, busdaycal=self._calendar)
 
         return np.busday_offset(dates, offset, roll.value, busdaycal=self._calendar)
 
