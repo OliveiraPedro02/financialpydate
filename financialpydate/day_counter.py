@@ -6,7 +6,6 @@ import numpy.typing as npt
 
 from financialpydate.date_handler import _is_last_day_of_feb, day, isleap, month, year
 from financialpydate import FinancialCalendar
-from financialpydate.calendars import Target
 
 
 @overload
@@ -79,31 +78,35 @@ def equalize_variable_types(
 
 
 class DayCounter(ABC):
-    __slots__ = ('calendar',)
-
-    def __init__(self, calendar: FinancialCalendar = Target):
-        self.calendar = calendar
-
     @property
     @abstractmethod
     def code(self) -> str: ...
 
     @overload
     def day_count(
-        self, start_date: npt.NDArray[np.datetime64], end_date: npt.NDArray[np.datetime64]
+        self,
+        start_date: npt.NDArray[np.datetime64],
+        end_date: npt.NDArray[np.datetime64],
+        calendar: FinancialCalendar | None = None,
     ) -> npt.NDArray[np.int_]: ...
 
     @overload
-    def day_count(self, start_date: npt.NDArray[np.datetime64], end_date: np.datetime64) -> npt.NDArray[np.int_]: ...
+    def day_count(
+        self, start_date: npt.NDArray[np.datetime64], end_date: np.datetime64, calendar: FinancialCalendar | None = None
+    ) -> npt.NDArray[np.int_]: ...
 
     @overload
-    def day_count(self, start_date: np.datetime64, end_date: npt.NDArray[np.datetime64]) -> npt.NDArray[np.int_]: ...
+    def day_count(
+        self, start_date: np.datetime64, end_date: npt.NDArray[np.datetime64], calendar: FinancialCalendar | None = None
+    ) -> npt.NDArray[np.int_]: ...
 
     @overload
-    def day_count(self, start_date: np.datetime64, end_date: np.datetime64) -> np.int_: ...
+    def day_count(
+        self, start_date: np.datetime64, end_date: np.datetime64, calendar: FinancialCalendar | None = None
+    ) -> np.int_: ...
 
     @abstractmethod
-    def day_count(self, start_date, end_date):
+    def day_count(self, start_date, end_date, calendar=None):
         """
         Returns the number of days between the given start date and end date.
         Parameters
@@ -122,20 +125,29 @@ class DayCounter(ABC):
 
     @overload
     def __call__(
-        self, start_date: npt.NDArray[np.datetime64], end_date: npt.NDArray[np.datetime64]
+        self,
+        start_date: npt.NDArray[np.datetime64],
+        end_date: npt.NDArray[np.datetime64],
+        calendar: FinancialCalendar | None = None,
     ) -> npt.NDArray[np.double]: ...
 
     @overload
-    def __call__(self, start_date: npt.NDArray[np.datetime64], end_date: np.datetime64) -> npt.NDArray[np.double]: ...
+    def __call__(
+        self, start_date: npt.NDArray[np.datetime64], end_date: np.datetime64, calendar: FinancialCalendar | None = None
+    ) -> npt.NDArray[np.double]: ...
 
     @overload
-    def __call__(self, start_date: np.datetime64, end_date: npt.NDArray[np.datetime64]) -> npt.NDArray[np.double]: ...
+    def __call__(
+        self, start_date: np.datetime64, end_date: npt.NDArray[np.datetime64], calendar: FinancialCalendar | None = None
+    ) -> npt.NDArray[np.double]: ...
 
     @overload
-    def __call__(self, start_date: np.datetime64, end_date: np.datetime64) -> float: ...
+    def __call__(
+        self, start_date: np.datetime64, end_date: np.datetime64, calendar: FinancialCalendar | None = None
+    ) -> float: ...
 
     @abstractmethod
-    def __call__(self, start_date, end_date) -> npt.NDArray[np.double] | float:
+    def __call__(self, start_date, end_date, calendar=None) -> npt.NDArray[np.double] | float:
         """
         Returns the year fraction for the given start date and end date.
         Parameters
@@ -158,7 +170,7 @@ class DayCounter(ABC):
 
 
 class ActualDayCounter(DayCounter):
-    def day_count(self, start_date, end_date):
+    def day_count(self, start_date, end_date, *args, **kwargs):
         return (end_date - start_date).astype('timedelta64[D]').astype(int)
 
     @property
@@ -171,7 +183,7 @@ class Actual360(ActualDayCounter):
     def code(self):
         return 'ACT/360'
 
-    def __call__(self, start_date, end_date):
+    def __call__(self, start_date, end_date, *args, **kwargs):
         return self.day_count(start_date, end_date) / 360
 
 
@@ -180,7 +192,7 @@ class Actual365(ActualDayCounter):
     def code(self):
         return 'ACT/365'
 
-    def __call__(self, start_date, end_date):
+    def __call__(self, start_date, end_date, *args, **kwargs):
         return self.day_count(start_date, end_date) / 365.0
 
 
@@ -189,12 +201,12 @@ class Nl365(DayCounter):
     def code(self):
         return 'NL/365'
 
-    def day_count(self, start_date, end_date):
+    def day_count(self, start_date, end_date, *args, **kwargs):
         return (end_date - start_date).astype('timedelta64[D]').astype(int) + (
             isleap(year(start_date)) + isleap(year(end_date))
         ) * -1.0
 
-    def __call__(self, start_date, end_date):
+    def __call__(self, start_date, end_date, *args, **kwargs):
         return (self.day_count(start_date, end_date)) / 365.0
 
 
@@ -203,11 +215,13 @@ class Business252(DayCounter):
     def code(self):
         return '252'
 
-    def day_count(self, start_date, end_date):
-        return np.busday_count(start_date, end_date, busdaycal=self.calendar.numpy_calendar)
+    def day_count(self, start_date, end_date, calendar=None):
+        if FinancialCalendar is None:
+            return np.busday_count(start_date, end_date)
+        return np.busday_count(start_date, end_date, busdaycal=calendar.numpy_calendar)
 
-    def __call__(self, start_date, end_date):
-        return self.day_count(start_date, end_date) / 252
+    def __call__(self, start_date, end_date, calendar=None):
+        return self.day_count(start_date, end_date, calendar) / 252
 
 
 class ActualActual(ActualDayCounter):
@@ -215,7 +229,7 @@ class ActualActual(ActualDayCounter):
     def code(self):
         return 'ACT/ACT'
 
-    def __call__(self, start_date, end_date):
+    def __call__(self, start_date, end_date, *args, **kwargs):
         if np.isscalar(start_date) and np.isscalar(end_date):
             if start_date == end_date:
                 return 0.0
@@ -260,7 +274,7 @@ class Thirty360(DayCounter):
     def code(self):
         return '30/360'
 
-    def day_count(self, start_date, end_date):
+    def day_count(self, start_date, end_date, *args, **kwargs):
         """Returns number of days between start_date and end_date, using Thirty/360 convention"""
         if np.isscalar(start_date) and np.isscalar(end_date):
             start_day = day(start_date)
@@ -279,7 +293,7 @@ class Thirty360(DayCounter):
 
         return 360 * (year(end_date) - year(start_date)) + 30 * (month(end_date) - month(start_date)) + d2 - d1
 
-    def __call__(self, start_date, end_date):
+    def __call__(self, start_date, end_date, *args, **kwargs):
         """Returns fraction in years between start_date and end_date, using Thirty/360 convention"""
         return self.day_count(start_date, end_date) / 360
 
@@ -289,7 +303,7 @@ class Thirty365(DayCounter):
     def code(self):
         return '30/365'
 
-    def day_count(self, start_date, end_date):
+    def day_count(self, start_date, end_date, *args, **kwargs):
         """Returns number of days between start_date and end_date, using Thirty/365 convention"""
         if np.isscalar(start_date) and np.isscalar(end_date):
             start_day = day(start_date)
@@ -308,7 +322,7 @@ class Thirty365(DayCounter):
 
         return 360 * (year(end_date) - year(start_date)) + 30 * (month(end_date) - month(start_date)) + d2 - d1
 
-    def __call__(self, start_date, end_date):
+    def __call__(self, start_date, end_date, *args, **kwargs):
         """Returns fraction in years between start_date and end_date, using Thirty/360 convention"""
         return self.day_count(start_date, end_date) / 365
 
@@ -318,7 +332,7 @@ class ThirtyE360(DayCounter):
     def code(self):
         return '30E/360'
 
-    def day_count(self, start_date, end_date):
+    def day_count(self, start_date, end_date, *args, **kwargs):
         """Returns number of days between start_date and end_date, using Thirty/360 convention"""
         start_date, end_date = equalize_variable_types(start_date, end_date)
         d1 = np.where(day(start_date) < 30, day(start_date), 30)
@@ -326,23 +340,22 @@ class ThirtyE360(DayCounter):
 
         return 360 * (year(end_date) - year(start_date)) + 30 * (month(end_date) - month(start_date)) + d2 - d1
 
-    def __call__(self, start_date, end_date):
+    def __call__(self, start_date, end_date, *args, **kwargs):
         """Returns fraction in years between start_date and end_date, using Thirty/360 convention"""
         return self.day_count(start_date, end_date) / 360
 
 
 class ThirtyE360ISDA(DayCounter):
-    __slots__ = ('calendar', 'is_end_date_on_termination')
+    __slots__ = 'is_end_date_on_termination'
 
-    def __init__(self, is_end_date_on_termination: bool = False, calendar: FinancialCalendar = Target):
+    def __init__(self, is_end_date_on_termination: bool = False):
         self.is_end_date_on_termination: bool = is_end_date_on_termination
-        self.calendar = calendar
 
     @property
     def code(self):
         return '30E/360ISDA'
 
-    def day_count(self, start_date, end_date):
+    def day_count(self, start_date, end_date, *args, **kwargs):
         """
         Returns number of days between start_date and end_date, using ThirtyE/360 ISDA convention.
 
@@ -356,7 +369,7 @@ class ThirtyE360ISDA(DayCounter):
 
         return 360 * (year(v_end_date) - year(v_start_date)) + 30 * (month(v_end_date) - month(v_start_date)) + d2 - d1
 
-    def __call__(self, start_date, end_date):
+    def __call__(self, start_date, end_date, *args, **kwargs):
         """Returns fraction in years between start_date and end_date, using Thirty/360 convention"""
         return self.day_count(start_date, end_date) / 360
 
@@ -366,7 +379,7 @@ class ThirtyU360(DayCounter):
     def code(self):
         return '30U/360'
 
-    def day_count(self, start_date, end_date):
+    def day_count(self, start_date, end_date, *args, **kwargs):
         """
         Returns number of days between start_date and end_date, using ThirtyE/360 ISDA convention.
 
@@ -382,7 +395,7 @@ class ThirtyU360(DayCounter):
 
         return 360 * (year(v_end_date) - year(v_start_date)) + 30 * (month(v_end_date) - month(v_start_date)) + d2 - d1
 
-    def __call__(self, start_date, end_date):
+    def __call__(self, start_date, end_date, *args, **kwargs):
         """Returns fraction in years between start_date and end_date, using Thirty/360 convention"""
         return self.day_count(start_date, end_date) / 360
 
@@ -392,5 +405,5 @@ class OneOne(ActualDayCounter):
     def code(self):
         return '1/1'
 
-    def __call__(self, start_date, end_date):
+    def __call__(self, start_date, end_date, *args, **kwargs):
         return np.ones_like(self.day_count(start_date, end_date), dtype=np.float_)

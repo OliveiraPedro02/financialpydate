@@ -185,7 +185,6 @@ class FinancialCalendar:
 
                 dates = dates[dates <= termination_date]
 
-
             case Rule.backward:
                 start_date = effective_date.astype('datetime64[M]')
                 end_date = termination_date.astype('datetime64[M]')

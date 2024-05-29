@@ -22,20 +22,20 @@ class BaseStructure:
     start_date: dt.date
     end_date: dt.date
 
-    def generate_maturity_tests(self, day_count, quantlib_day_count):
+    def generate_maturity_tests(self, day_count, quantlib_day_count, **kwargs):
         dates = np.arange(np.datetime64(self.start_date), np.datetime64(self.end_date) + 1)
         ql_dates = [ql.Date(date.day, date.month, date.year) for date in dates.astype(dt.date)]
         maturity = ql_dates[-1]
         ql_values = np.array([quantlib_day_count.yearFraction(date, maturity) for date in ql_dates])
-        output = day_count(start_date=dates, end_date=np.datetime64(self.end_date))
+        output = day_count(start_date=dates, end_date=np.datetime64(self.end_date), **kwargs)
         return np.all(np.isclose(output, ql_values))
 
-    def generate_start_date_tests(self, day_count, quantlib_day_count):
+    def generate_start_date_tests(self, day_count, quantlib_day_count, **kwargs):
         dates = np.arange(np.datetime64(self.start_date), np.datetime64(self.end_date) + 1)
         ql_dates = [ql.Date(date.day, date.month, date.year) for date in dates.astype(dt.date)]
         start_date = ql_dates[0]
         ql_values = np.array([quantlib_day_count.yearFraction(start_date, date) for date in ql_dates])
-        output = day_count(start_date=np.datetime64(self.start_date), end_date=dates)
+        output = day_count(start_date=np.datetime64(self.start_date), end_date=dates, **kwargs)
         return np.all(np.isclose(output, ql_values))
 
     def test_actual_360_maturity(self):
@@ -70,6 +70,14 @@ class BaseStructure:
         one_one = OneOne()
         assert self.generate_maturity_tests(one_one, ql.OneDayCounter())
 
+    def test_business_252_maturity(self):
+        business_252 = Business252()
+        assert self.generate_maturity_tests(
+            business_252,
+            ql.Business252(ql.UnitedStates(ql.UnitedStates.GovernmentBond)),
+            calendar=all_calendars["UnitedStates['GovernmentBond']"],
+        )
+
     def test_actual_360_start_date(self):
         actual_360 = Actual360()
         assert self.generate_start_date_tests(actual_360, ql.Actual360())
@@ -99,9 +107,11 @@ class BaseStructure:
         assert self.generate_start_date_tests(one_one, ql.OneDayCounter())
 
     def test_business_252(self):
-        business_252 = Business252(calendar=all_calendars["UnitedStates['GovernmentBond']"])
+        business_252 = Business252()
         assert self.generate_start_date_tests(
-            business_252, ql.Business252(ql.UnitedStates(ql.UnitedStates.GovernmentBond))
+            business_252,
+            ql.Business252(ql.UnitedStates(ql.UnitedStates.GovernmentBond)),
+            calendar=all_calendars["UnitedStates['GovernmentBond']"],
         )
 
 
