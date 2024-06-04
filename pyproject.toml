@@ -4,12 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "financialpydate"
+version = "0.0.1"
 authors = [
+    { name = "Pedro Henrique Rezende Oliveira", email = "pedro-henrique.rezende@solvaypostgrad.net" },
+]
+maintainers = [
     { name = "Pedro Henrique Rezende Oliveira", email = "pedro-henrique.rezende@solvaypostgrad.net" },
 ]
 description = "Project with financial dates and generate cashflows schedules"
 readme = "README.md"
-keywords = ["conda"]
+keywords = ["finance", "date", "schedules", "cashflows", "payment"]
 license = { text = "MIT" }
 dynamic = ["version"]
 requires-python = ">=3.11"
@@ -36,6 +40,10 @@ Source = "https://github.com/OliveiraPedro02/financialpydate"
 
 [tool.setuptools.packages.find]
 include = ["*"]
+exclude = ["financialpydate.updatefiles"]
+
+[tool.setuptools.package-data]
+"financialpydate" = ["py.typed"]
 
 [tool.ruff]
 line-length = 120
