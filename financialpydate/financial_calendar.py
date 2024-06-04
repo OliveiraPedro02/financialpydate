@@ -330,7 +330,7 @@ class FinancialCalendar:
     def working_days_offset(
         self,
         dates: np.datetime64,
-        offset: np.timedelta64,
+        offset: np.timedelta64 | int,
         roll: Convention = Convention.unadjusted,
     ) -> np.datetime64: ...
 
@@ -338,7 +338,7 @@ class FinancialCalendar:
     def working_days_offset(
         self,
         dates: np.datetime64,
-        offset: npt.NDArray[np.timedelta64],
+        offset: npt.NDArray[np.timedelta64] | npt.NDArray[np.int_],
         roll: Convention = Convention.unadjusted,
     ) -> npt.NDArray[np.datetime64]: ...
 
@@ -346,7 +346,7 @@ class FinancialCalendar:
     def working_days_offset(
         self,
         dates: npt.NDArray[np.datetime64],
-        offset: np.timedelta64 | npt.NDArray[np.timedelta64],
+        offset: int | np.timedelta64 | npt.NDArray[np.timedelta64] | npt.NDArray[np.int_],
         roll: Convention = Convention.unadjusted,
     ) -> npt.NDArray[np.datetime64]: ...
 
