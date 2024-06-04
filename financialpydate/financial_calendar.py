@@ -295,7 +295,7 @@ class FinancialCalendar:
         dates: npt.NDArray[np.datetime64],
         offset: int | np.timedelta64,
         roll: Convention = Convention.unadjusted,
-    ) -> np.datetime64 | npt.NDArray[np.datetime64]: ...
+    ) -> npt.NDArray[np.datetime64]: ...
 
     @overload
     def offset(
