@@ -4,7 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "financialpydate"
-version = "0.0.1"
+version = "0.0.2"
+
 authors = [
     { name = "Pedro Henrique Rezende Oliveira", email = "pedro-henrique.rezende@solvaypostgrad.net" },
 ]
@@ -15,7 +16,6 @@ description = "Project with financial dates and generate cashflows schedules"
 readme = "README.md"
 keywords = ["finance", "date", "schedules", "cashflows", "payment"]
 license = { text = "MIT" }
-dynamic = ["version"]
 requires-python = ">=3.11"
 dependencies = [
   "numpy >= 1.26",
