@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "financialpydate"
-version = "0.0.2"
+version = "0.0.3"
 
 authors = [
     { name = "Pedro Henrique Rezende Oliveira", email = "pedro-henrique.rezende@solvaypostgrad.net" },
@@ -39,8 +39,8 @@ pythonpath = [
 Source = "https://github.com/OliveiraPedro02/financialpydate"
 
 [tool.setuptools.packages.find]
-include = ["*"]
-exclude = ["financialpydate.updatefiles"]
+include = ["financialpydate"]
+exclude = ["financialpydate.update_files*"]
 
 [tool.setuptools.package-data]
 "financialpydate" = ["py.typed"]
