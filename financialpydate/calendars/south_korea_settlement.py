@@ -13923,6 +13923,7 @@ SouthKorea_Settlement: FinancialCalendar = FinancialCalendar(
             '2024-09-22',
             '2024-09-28',
             '2024-09-29',
+            '2024-10-01',
             '2024-10-03',
             '2024-10-05',
             '2024-10-06',

@@ -18,7 +18,7 @@ class Convention(str, Enum):
     unadjusted = 'unadjusted'
 
     @property
-    def inverse(self) -> "Convention":
+    def inverse(self) -> 'Convention':
         match self:
             case Convention.following:
                 return Convention.preceding

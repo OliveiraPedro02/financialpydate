@@ -406,4 +406,4 @@ class OneOne(ActualDayCounter):
         return '1/1'
 
     def __call__(self, start_date, end_date, *args, **kwargs):
-        return np.ones_like(self.day_count(start_date, end_date), dtype=np.float_)
+        return np.ones_like(self.day_count(start_date, end_date), dtype=np.float64)
