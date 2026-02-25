@@ -3,13 +3,13 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - pip=23.3.1
-  - python>=3.11
+  - pip=25.0.1
+  - python>=3.12
   - numpy>=1.26.4
-  - numba>=0.59.1
-  - pytest=8.3.3
-  - mypy=1.13
-  - ruff=0.8.1
-  - pre-commit=4.0.1
+  - numba>=0.61.0
+  - pytest=8.3.5
+  - mypy=1.15
+  - ruff=0.11.2
+  - pre-commit=4.2.0
   - pip:
-      - QuantLib==1.36
+      - QuantLib==1.37
