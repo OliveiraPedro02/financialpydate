@@ -1,3 +1,5 @@
+from typing import Literal
+
 import numpy as np
 import pytest
 
@@ -670,7 +672,7 @@ class TestOtherSchedules:
         effective_date: str,
         terminantion_date: str,
         rule: Rule,
-        period: tuple[int, str],
+        period: tuple[int, Literal['Y', 'M', 'D']],
         calendar: str = 'WeekendsOnly',
         first_date: np.datetime64 | None = None,
         next_last_date: np.datetime64 | None = None,
