@@ -2,6 +2,8 @@ import datetime as dt
 
 import numpy as np
 import QuantLib as ql
+import pytest
+
 from financialpydate.day_counter import (
     Actual360,
     Actual365,
@@ -115,16 +117,19 @@ class BaseStructure:
         )
 
 
+@pytest.mark.benchmark()
 class TestSameDates(BaseStructure):
     start_date = dt.date(2011, 8, 31)
     end_date = dt.date(2011, 8, 31)
 
 
+@pytest.mark.benchmark()
 class TestLessThanOneYearDates(BaseStructure):
     start_date = dt.date(2011, 8, 31)
     end_date = dt.date(2012, 2, 29)
 
 
+@pytest.mark.benchmark()
 class Test20YearsDates(BaseStructure):
     start_date = dt.date(2000, 8, 31)
     end_date = dt.date(2022, 8, 31)

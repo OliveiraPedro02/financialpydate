@@ -406,7 +406,7 @@ class FinancialCalendar:
                     _convention = Rule.backward
                 make_schedule_function = self._monthly_date_generation
             case _:
-                raise NotImplementedError  # (f'Period {period} of type {period.dtype} is not implemented.')
+                raise NotImplementedError(f'Period {period} of type {period.dtype} is not implemented.')
 
         dates = make_schedule_function(
             start_date, end_date, period, _end_of_month, rule, convention, termination_convention

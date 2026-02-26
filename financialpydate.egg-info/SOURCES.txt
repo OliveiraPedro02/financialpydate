@@ -1,10 +1,12 @@
 .gitignore
 .pre-commit-config.yml
+.python-version
 LICENSE
 README.md
 environment.yml
 meta.yaml
 pyproject.toml
+uv.lock
 .github/workflows/python-package-conda.yml
 .github/workflows/release.yml
 .idea/.gitignore

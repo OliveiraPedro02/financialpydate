@@ -3,7 +3,7 @@ name: Python Package using Conda
 on: [push, pull_request]
 
 jobs:
-  build-linux:
+  pytest:
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 5
@@ -31,6 +31,34 @@ jobs:
 
     - name: Run pytest
       run: uv run pytest test
+
+  benchmark:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.14"
+
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        cache-dependency-glob: |
+          pyproject.toml
+          uv.lock
+
+    - name: Install dependencies
+      run: uv sync --locked --all-extras --dev
+
+    - name: Run the benchmark
+      uses: CodSpeedHQ/action@v4
+      with:
+        mode: simulation
+        run: uv run pytest test --codspeed
 
   ty:
     runs-on: ubuntu-latest

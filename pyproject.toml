@@ -87,6 +87,7 @@ line-ending = "auto"
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "pytest-codspeed>=4.3.0",
     "quantlib>=1.41",
     "ruff>=0.15.2",
     "ty>=0.0.18",

@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class Convention(str, Enum):
+class Convention(StrEnum):
     """
     forward: Take the first valid day later in time.
     preceding: Take the first valid day earlier in time.
