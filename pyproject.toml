@@ -18,18 +18,9 @@ keywords = ["finance", "date", "schedules", "cashflows", "payment"]
 license = { text = "MIT" }
 requires-python = ">=3.11"
 dependencies = [
-  "numpy >= 1.26",
-  "numba == 0.59.1",
+  "numba>=0.64.0",
+  "numpy >= 2.3.0",
 ]
-
-[project.optional-dependencies]
-testing = [
-    "QuantLib",
-    "pytest",
-    "mypy",
-    "ruff",
-]
-
 [tool.pytest.ini_options]
 pythonpath = [
     ".", "financialpydate", "test"
@@ -92,3 +83,20 @@ quote-style = "single"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-codspeed>=4.3.0",
+    "quantlib>=1.41",
+    "ruff>=0.15.2",
+    "ty>=0.0.18",
+]
+
+[tool.ty.src]
+include = ["financialpydate", "test"]
+exclude = ["financialpydate/calendars", "financialpydate/update_files"]
+
+[tool.ty.rules]
+unresolved-attribute = "ignore"
+no-matching-overload = "ignore"

@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class Rule(str, Enum):
+class Rule(StrEnum):
     CDS_2015 = 'CDS_2015'
     old_CDS = 'old_CDS'
     CDS = 'CDS'

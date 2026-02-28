@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class Convention(str, Enum):
+class Convention(StrEnum):
     """
     forward: Take the first valid day later in time.
     preceding: Take the first valid day earlier in time.
@@ -18,7 +18,7 @@ class Convention(str, Enum):
     unadjusted = 'unadjusted'
 
     @property
-    def inverse(self) -> "Convention":
+    def inverse(self) -> 'Convention':
         match self:
             case Convention.following:
                 return Convention.preceding

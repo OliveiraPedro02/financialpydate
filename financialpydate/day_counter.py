@@ -7,33 +7,35 @@ import numpy.typing as npt
 from financialpydate.date_handler import _is_last_day_of_feb, day, isleap, month, year
 from financialpydate import FinancialCalendar
 
-
-@overload
-def equalize_variable_types(
-    start_date: npt.NDArray[np.datetime64], end_date: npt.NDArray[np.datetime64]
-) -> tuple[npt.NDArray[np.datetime64], npt.NDArray[np.datetime64]]: ...
+from financialpydate.numpy_types import NumpyDateType
 
 
 @overload
 def equalize_variable_types(
-    start_date: np.datetime64, end_date: npt.NDArray[np.datetime64]
-) -> tuple[npt.NDArray[np.datetime64], npt.NDArray[np.datetime64]]: ...
+    start_date: npt.NDArray[NumpyDateType], end_date: npt.NDArray[NumpyDateType]
+) -> tuple[npt.NDArray[NumpyDateType], npt.NDArray[NumpyDateType]]: ...
 
 
 @overload
 def equalize_variable_types(
-    start_date: npt.NDArray[np.datetime64], end_date: np.datetime64
-) -> tuple[npt.NDArray[np.datetime64], npt.NDArray[np.datetime64]]: ...
+    start_date: NumpyDateType, end_date: npt.NDArray[NumpyDateType]
+) -> tuple[npt.NDArray[NumpyDateType], npt.NDArray[NumpyDateType]]: ...
 
 
 @overload
 def equalize_variable_types(
-    start_date: np.datetime64, end_date: np.datetime64
-) -> tuple[np.datetime64, np.datetime64]: ...
+    start_date: npt.NDArray[NumpyDateType], end_date: NumpyDateType
+) -> tuple[npt.NDArray[NumpyDateType], npt.NDArray[NumpyDateType]]: ...
+
+
+@overload
+def equalize_variable_types(
+    start_date: NumpyDateType, end_date: NumpyDateType
+) -> tuple[NumpyDateType, NumpyDateType]: ...
 
 
 def equalize_variable_types(
-    start_date: npt.NDArray[np.datetime64] | np.datetime64, end_date: npt.NDArray[np.datetime64] | np.datetime64
+    start_date: npt.NDArray[NumpyDateType] | NumpyDateType, end_date: npt.NDArray[NumpyDateType] | NumpyDateType
 ) -> tuple:
     """
     Convert the `start_date` and `end_date` variables to the same type.
@@ -42,19 +44,19 @@ def equalize_variable_types(
     If both parameters are arrays then they must have the same shape. Otherwise, an error will be raised.
 
     The scenarios are:
-        - start_date: np.datetime64 and end_date: np.datetime64. The return will be (np.datetime64, np.datetime64)
-        - start_date: npt.NDArray[np.datetime64] and end_date: np.datetime64. The return will be
-        (npt.NDArray[np.datetime64], npt.NDArray[np.datetime64])
-        - start_date: np.datetime64 and end_date: npt.NDArray[np.datetime64]. The return will be
-        (npt.NDArray[np.datetime64], npt.NDArray[np.datetime64])
-        - start_date: npt.NDArray[np.datetime64] and end_date: npt.NDArray[np.datetime64] with same shape.
-        The return will be (npt.NDArray[np.datetime64], npt.NDArray[np.datetime64])
+        - start_date: NumpyDateType and end_date: NumpyDateType. The return will be (NumpyDateType, NumpyDateType)
+        - start_date: npt.NDArray[NumpyDateType] and end_date: NumpyDateType. The return will be
+        (npt.NDArray[NumpyDateType], npt.NDArray[NumpyDateType])
+        - start_date: NumpyDateType and end_date: npt.NDArray[NumpyDateType]. The return will be
+        (npt.NDArray[NumpyDateType], npt.NDArray[NumpyDateType])
+        - start_date: npt.NDArray[NumpyDateType] and end_date: npt.NDArray[NumpyDateType] with same shape.
+        The return will be (npt.NDArray[NumpyDateType], npt.NDArray[NumpyDateType])
 
     Parameters
     ----------
-    start_date: npt.NDArray[np.datetime64] | np.datetime64
+    start_date: npt.NDArray[NumpyDateType] | NumpyDateType
         start date or array of start dates to be equalized.
-    end_date:  npt.NDArray[np.datetime64] | np.datetime64
+    end_date:  npt.NDArray[NumpyDateType] | NumpyDateType
         end date or array of start dates to be equalized.
 
     Returns
@@ -85,24 +87,24 @@ class DayCounter(ABC):
     @overload
     def day_count(
         self,
-        start_date: npt.NDArray[np.datetime64],
-        end_date: npt.NDArray[np.datetime64],
+        start_date: npt.NDArray[NumpyDateType],
+        end_date: npt.NDArray[NumpyDateType],
         calendar: FinancialCalendar | None = None,
     ) -> npt.NDArray[np.int_]: ...
 
     @overload
     def day_count(
-        self, start_date: npt.NDArray[np.datetime64], end_date: np.datetime64, calendar: FinancialCalendar | None = None
+        self, start_date: npt.NDArray[NumpyDateType], end_date: NumpyDateType, calendar: FinancialCalendar | None = None
     ) -> npt.NDArray[np.int_]: ...
 
     @overload
     def day_count(
-        self, start_date: np.datetime64, end_date: npt.NDArray[np.datetime64], calendar: FinancialCalendar | None = None
+        self, start_date: NumpyDateType, end_date: npt.NDArray[NumpyDateType], calendar: FinancialCalendar | None = None
     ) -> npt.NDArray[np.int_]: ...
 
     @overload
     def day_count(
-        self, start_date: np.datetime64, end_date: np.datetime64, calendar: FinancialCalendar | None = None
+        self, start_date: NumpyDateType, end_date: NumpyDateType, calendar: FinancialCalendar | None = None
     ) -> np.int_: ...
 
     @abstractmethod
@@ -111,9 +113,9 @@ class DayCounter(ABC):
         Returns the number of days between the given start date and end date.
         Parameters
         ----------
-        start_date: np.datetime64 | npt.NDArray[np.datetime64]
+        start_date: NumpyDateType | npt.NDArray[NumpyDateType]
             start date or array of start dates
-        end_date: np.datetime64 | npt.NDArray[np.datetime64]
+        end_date: NumpyDateType | npt.NDArray[NumpyDateType]
             start date or array of start dates
         Returns
         -------
@@ -126,24 +128,24 @@ class DayCounter(ABC):
     @overload
     def __call__(
         self,
-        start_date: npt.NDArray[np.datetime64],
-        end_date: npt.NDArray[np.datetime64],
+        start_date: npt.NDArray[NumpyDateType],
+        end_date: npt.NDArray[NumpyDateType],
         calendar: FinancialCalendar | None = None,
     ) -> npt.NDArray[np.double]: ...
 
     @overload
     def __call__(
-        self, start_date: npt.NDArray[np.datetime64], end_date: np.datetime64, calendar: FinancialCalendar | None = None
+        self, start_date: npt.NDArray[NumpyDateType], end_date: NumpyDateType, calendar: FinancialCalendar | None = None
     ) -> npt.NDArray[np.double]: ...
 
     @overload
     def __call__(
-        self, start_date: np.datetime64, end_date: npt.NDArray[np.datetime64], calendar: FinancialCalendar | None = None
+        self, start_date: NumpyDateType, end_date: npt.NDArray[NumpyDateType], calendar: FinancialCalendar | None = None
     ) -> npt.NDArray[np.double]: ...
 
     @overload
     def __call__(
-        self, start_date: np.datetime64, end_date: np.datetime64, calendar: FinancialCalendar | None = None
+        self, start_date: NumpyDateType, end_date: NumpyDateType, calendar: FinancialCalendar | None = None
     ) -> float: ...
 
     @abstractmethod
@@ -152,9 +154,9 @@ class DayCounter(ABC):
         Returns the year fraction for the given start date and end date.
         Parameters
         ----------
-        start_date: np.datetime64 | npt.NDArray[np.datetime64]
+        start_date: NumpyDateType | npt.NDArray[NumpyDateType]
             start date or array of start dates
-        end_date: np.datetime64 | npt.NDArray[np.datetime64]
+        end_date: NumpyDateType | npt.NDArray[NumpyDateType]
             start date or array of start dates
         Returns
         -------
@@ -388,9 +390,10 @@ class ThirtyU360(DayCounter):
         v_start_date, v_end_date = equalize_variable_types(start_date, end_date)
         mask_d1_date = day(v_start_date) >= 30
         feb_mask_d1 = _is_last_day_of_feb(v_start_date)
-        d1 = np.where(mask_d1_date | feb_mask_d1, 30, day(v_start_date))
+        d1_or_end_feb = mask_d1_date | feb_mask_d1
+        d1 = np.where(d1_or_end_feb, 30, day(v_start_date))
 
-        mask = ((day(v_end_date) == 31) & mask_d1_date) | (feb_mask_d1 & _is_last_day_of_feb(v_end_date))
+        mask = ((day(v_end_date) == 31) & d1_or_end_feb) | (feb_mask_d1 & _is_last_day_of_feb(v_end_date))
         d2 = np.where(mask, 30, day(v_end_date))
 
         return 360 * (year(v_end_date) - year(v_start_date)) + 30 * (month(v_end_date) - month(v_start_date)) + d2 - d1
@@ -406,4 +409,4 @@ class OneOne(ActualDayCounter):
         return '1/1'
 
     def __call__(self, start_date, end_date, *args, **kwargs):
-        return np.ones_like(self.day_count(start_date, end_date), dtype=np.float_)
+        return np.ones_like(self.day_count(start_date, end_date), dtype=np.float64)

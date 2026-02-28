@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: financialpydate
+Version: 0.0.4
+Summary: Project with financial dates and generate cashflows schedules
+Author-email: Pedro Henrique Rezende Oliveira <pedro-henrique.rezende@solvaypostgrad.net>
+Maintainer-email: Pedro Henrique Rezende Oliveira <pedro-henrique.rezende@solvaypostgrad.net>
+License: MIT
+Project-URL: Source, https://github.com/OliveiraPedro02/financialpydate
+Keywords: finance,date,schedules,cashflows,payment
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numba>=0.64.0
+Requires-Dist: numpy>=2.3.0
+Dynamic: license-file
+
+# Financial pyDate
+Python library to create cashflows and derive day count conventions using python.

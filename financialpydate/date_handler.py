@@ -4,6 +4,8 @@ import numba
 import numpy as np
 import numpy.typing as npt
 
+from financialpydate.numpy_types import NumpyDateType, IntArrayType, DateArrayType
+
 Jan = 1
 Feb = 2
 Mar = 3
@@ -23,7 +25,7 @@ def isleap(year: int) -> np.bool_: ...
 
 
 @overload
-def isleap(year: npt.NDArray[np.uint]) -> npt.NDArray[np.bool_]: ...
+def isleap(year: IntArrayType) -> npt.NDArray[np.bool_]: ...
 
 
 @numba.njit(fastmath=True, cache=True)
@@ -33,11 +35,11 @@ def isleap(year):
 
 
 @overload
-def day(date: np.datetime64) -> np.uint: ...
+def day(date: NumpyDateType) -> np.uint64: ...
 
 
 @overload
-def day(date: npt.NDArray[np.datetime64]) -> npt.NDArray[np.uint]: ...
+def day(date: DateArrayType) -> IntArrayType: ...
 
 
 def day(date):
@@ -45,11 +47,11 @@ def day(date):
 
 
 @overload
-def month(date: np.datetime64) -> np.uint: ...
+def month(date: NumpyDateType) -> np.uint64: ...
 
 
 @overload
-def month(date: npt.NDArray[np.datetime64]) -> npt.NDArray[np.uint]: ...
+def month(date: DateArrayType) -> IntArrayType: ...
 
 
 def month(date):
@@ -57,23 +59,23 @@ def month(date):
 
 
 @overload
-def year(date: np.datetime64) -> int: ...
+def year(date: NumpyDateType) -> np.uint64: ...
 
 
 @overload
-def year(date: npt.NDArray[np.datetime64]) -> npt.NDArray[np.uint]: ...
+def year(date: DateArrayType) -> IntArrayType: ...
 
 
 def year(date):
-    return date.astype('datetime64[Y]').astype(int) + 1970
+    return date.astype('datetime64[Y]').astype(np.int64) + 1970
 
 
 @overload
-def _is_last_day_of_feb(date: np.datetime64) -> np.bool_: ...
+def _is_last_day_of_feb(date: NumpyDateType) -> np.bool_: ...
 
 
 @overload
-def _is_last_day_of_feb(date: npt.NDArray[np.datetime64]) -> npt.NDArray[np.bool_]: ...
+def _is_last_day_of_feb(date: DateArrayType) -> npt.NDArray[np.bool_]: ...
 
 
 def _is_last_day_of_feb(date):
@@ -82,7 +84,7 @@ def _is_last_day_of_feb(date):
     capture such behavior.
     Parameters
     ----------
-    date: np.datetime64 | npt.NDArray[np.datetime64]
+    date: NumpyDateType | DateArrayType
         date or dates to be checked.
 
     Returns
@@ -95,7 +97,7 @@ def _is_last_day_of_feb(date):
     return (month(date) == 2) & (day(date) == last_of_month)
 
 
-def add_month_day(dates: npt.NDArray[np.datetime64], day: int | np.uint) -> npt.NDArray[np.datetime64]:
+def add_month_day(dates: DateArrayType, day: int | np.uint64) -> DateArrayType:
     if day <= 28:
         return dates + np.timedelta64(day - 1, 'D')
     leap_year = isleap(year(dates))
@@ -106,7 +108,7 @@ def add_month_day(dates: npt.NDArray[np.datetime64], day: int | np.uint) -> npt.
 
 @numba.njit(cache=True)
 def nb_add_month_day(
-    months: npt.NDArray[np.uint], is_leap_year: npt.NDArray[np.bool_], day: npt.NDArray[np.uint64]
+    months: IntArrayType, is_leap_year: npt.NDArray[np.bool_], day: npt.NDArray[np.uint64]
 ) -> npt.NDArray[np.uint64]:
     max_days = np.minimum(np.array([28, 29, 30, 31], np.int64), day) - 1
     days = np.empty_like(months, np.uint64)
