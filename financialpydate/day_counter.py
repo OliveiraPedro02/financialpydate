@@ -218,7 +218,7 @@ class Business252(DayCounter):
         return '252'
 
     def day_count(self, start_date, end_date, calendar=None):
-        if FinancialCalendar is None:
+        if calendar is None:
             return np.busday_count(start_date, end_date)
         return np.busday_count(start_date, end_date, busdaycal=calendar.numpy_calendar)
 
