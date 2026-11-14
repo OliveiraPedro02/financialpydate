@@ -34,6 +34,75 @@ def isleap(year):
     return (year % 4 == 0) & ((year % 100 != 0) | (year % 400 == 0))
 
 
+@numba.njit(cache=True, inline='always')
+def _is_leap_int(y: int) -> bool:
+    return (y % 4 == 0) and ((y % 100 != 0) or (y % 400 == 0))
+
+
+@numba.njit(cache=True, inline='always')
+def _civil_from_days(z: int) -> tuple[int, int, int]:
+    """
+    Convert days since 1970-01-01 into (year, month, day) using integer arithmetic only.
+
+    Howard Hinnant's ``civil_from_days`` algorithm (proleptic Gregorian calendar), the same calendar numpy's
+    ``datetime64`` uses. One call replaces the ``astype('datetime64[Y]')`` / ``astype('datetime64[M]')`` round trips.
+    """
+    z += 719468
+    era = (z if z >= 0 else z - 146096) // 146097
+    doe = z - era * 146097
+    yoe = (doe - doe // 1460 + doe // 36524 - doe // 146096) // 365
+    doy = doe - (365 * yoe + yoe // 4 - yoe // 100)
+    mp = (5 * doy + 2) // 153
+    d = doy - (153 * mp + 2) // 5 + 1
+    m = mp + 3 if mp < 10 else mp - 9
+    y = yoe + era * 400 + (1 if m <= 2 else 0)
+    return y, m, d
+
+
+@numba.njit(cache=True, inline='always')
+def _days_from_civil(y: int, m: int, d: int) -> int:
+    """Inverse of `_civil_from_days`: days since 1970-01-01 of the given (year, month, day)."""
+    if m <= 2:
+        y -= 1
+    era = (y if y >= 0 else y - 399) // 400
+    yoe = y - era * 400
+    mp = m - 3 if m > 2 else m + 9
+    doy = (153 * mp + 2) // 5 + d - 1
+    doe = yoe * 365 + yoe // 4 - yoe // 100 + doy
+    return era * 146097 + doe - 719468
+
+
+@numba.njit(cache=True)
+def _ymd_kernel(days: npt.NDArray[np.int64]) -> tuple[IntArrayType, IntArrayType, IntArrayType]:
+    n = days.size
+    years = np.empty(n, np.int64)
+    months = np.empty(n, np.int64)
+    days_of_month = np.empty(n, np.int64)
+    for i in range(n):
+        years[i], months[i], days_of_month[i] = _civil_from_days(days[i])
+    return years, months, days_of_month
+
+
+@overload
+def ymd(date: NumpyDateType) -> tuple[np.int64, np.int64, np.int64]: ...
+
+
+@overload
+def ymd(date: DateArrayType) -> tuple[IntArrayType, IntArrayType, IntArrayType]: ...
+
+
+def ymd(date):
+    """
+    Return ``(year, month, day)`` of a date or array of dates, computed in a single pass.
+
+    Prefer this over calling `year`, `month` and `day` separately: each of those converts the dates again.
+    """
+    days = np.asarray(date, dtype='datetime64[D]')
+    shape = days.shape
+    y, m, d = _ymd_kernel(np.ascontiguousarray(days).reshape(-1).view(np.int64))
+    return y.reshape(shape)[()], m.reshape(shape)[()], d.reshape(shape)[()]
+
+
 @overload
 def day(date: NumpyDateType) -> np.uint64: ...
 
@@ -93,8 +162,8 @@ def _is_last_day_of_feb(date):
         Returns True if it is the last day of February and False if it is not.
 
     """
-    last_of_month = 28 + np.where(isleap(year(date)), 1, 0)
-    return (month(date) == 2) & (day(date) == last_of_month)
+    years, months, days = ymd(date)
+    return (months == 2) & (days == 28 + np.where(isleap(years), 1, 0))
 
 
 def add_month_day(dates: DateArrayType, day: int | np.uint64) -> DateArrayType:
