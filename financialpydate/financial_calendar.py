@@ -38,15 +38,35 @@ def next_twentieth(date: NumpyDateType, rule: Rule) -> NumpyDateType:
     return result
 
 
+BUSINESS_DAY_TABLE_START = np.datetime64('1900-01-01', 'D')
+BUSINESS_DAY_TABLE_END = np.datetime64('2200-01-01', 'D')
+
+
+def cumulative_business_days(busdaycal: np.busdaycalendar) -> npt.NDArray[np.int32]:
+    """
+    Running count of business days from `BUSINESS_DAY_TABLE_START`.
+
+    ``table[i]`` is the number of business days in ``[BUSINESS_DAY_TABLE_START, BUSINESS_DAY_TABLE_START + i)``, so
+    ``table[e - start] - table[s - start]`` equals ``np.busday_count(s, e)`` for ``s <= e`` in the table's range. For
+    ``e < s`` numpy counts ``(e, s]`` instead, i.e. both indices shifted by one.
+    """
+    is_business_day = np.is_busday(np.arange(BUSINESS_DAY_TABLE_START, BUSINESS_DAY_TABLE_END), busdaycal=busdaycal)
+    table = np.zeros(is_business_day.size + 1, dtype=np.int32)
+    np.cumsum(is_business_day, dtype=np.int32, out=table[1:])
+    return table
+
+
 class FinancialCalendar:
     __slots__ = (
         '_stub_days_old_cds',
         '_calendar',
         '_one_day_time_delta',
         '_nineteen_days_time_delta',
+        '_cumulative_business_days',
     )
 
     def __init__(self, holidays: npt.NDArray[NumpyDateType], weekmask: str | npt.NDArray[np.bool_] | None = None):
+        self._cumulative_business_days: npt.NDArray[np.int32] | None = None
         self._stub_days_old_cds: np.timedelta64 = np.timedelta64(30, 'D')
         self._one_day_time_delta: np.timedelta64 = np.timedelta64(1, 'D')
         if weekmask is None:
@@ -67,6 +87,13 @@ class FinancialCalendar:
     @property
     def numpy_calendar(self) -> np.busdaycalendar:
         return self._calendar
+
+    @property
+    def cumulative_business_days(self) -> npt.NDArray[np.int32]:
+        """Lazily built, cached `cumulative_business_days` table for this calendar (used by `Business252`)."""
+        if self._cumulative_business_days is None:
+            self._cumulative_business_days = cumulative_business_days(self._calendar)
+        return self._cumulative_business_days
 
     def _get_cds_date_range(
         self, date: NumpyDateType, convention: Convention, initial_date: bool
