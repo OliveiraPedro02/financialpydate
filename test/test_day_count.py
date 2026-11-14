@@ -16,10 +16,32 @@ from financialpydate.day_counter import (
     Business252,
     Nl365,
     Thirty365,
+    Actual364,
+    Actual366,
+    Actual36525,
+    ActualActualAFB,
+    Thirty360German,
+    Thirty360Italian,
+    Thirty360NASD,
+    SimpleDayCounter,
 )
 
 # from update_files.get_holidays import holiday_list_numpy
 from financialpydate.calendars.all_calendar import all_calendars
+
+# (ours, QuantLib's) for the conventions checked on the date grids of every `BaseStructure` subclass.
+QUANTLIB_EQUIVALENTS = [
+    pytest.param(Actual364(), ql.Actual364(), id='act_364'),
+    pytest.param(Actual366(), ql.Actual366(), id='act_366'),
+    pytest.param(Actual366(include_last_day=True), ql.Actual366(True), id='act_366_inc'),
+    pytest.param(Actual36525(), ql.Actual36525(), id='act_365_25'),
+    pytest.param(Actual36525(include_last_day=True), ql.Actual36525(True), id='act_365_25_inc'),
+    pytest.param(ActualActualAFB(), ql.ActualActual(ql.ActualActual.AFB), id='act_act_afb'),
+    pytest.param(Thirty360German(), ql.Thirty360(ql.Thirty360.German), id='thirty_360_german'),
+    pytest.param(Thirty360Italian(), ql.Thirty360(ql.Thirty360.Italian), id='thirty_360_italian'),
+    pytest.param(Thirty360NASD(), ql.Thirty360(ql.Thirty360.NASD), id='thirty_360_nasd'),
+    pytest.param(SimpleDayCounter(), ql.SimpleDayCounter(), id='simple'),
+]
 
 
 class BaseStructure:
@@ -41,6 +63,14 @@ class BaseStructure:
         ql_values = np.array([quantlib_day_count.yearFraction(start_date, date) for date in ql_dates])
         output = day_count(start_date=np.datetime64(self.start_date), end_date=dates, **kwargs)
         return np.all(np.isclose(output, ql_values))
+
+    @pytest.mark.parametrize(('day_counter', 'quantlib_day_counter'), QUANTLIB_EQUIVALENTS)
+    def test_quantlib_equivalent_maturity(self, day_counter, quantlib_day_counter):
+        assert self.generate_maturity_tests(day_counter, quantlib_day_counter)
+
+    @pytest.mark.parametrize(('day_counter', 'quantlib_day_counter'), QUANTLIB_EQUIVALENTS)
+    def test_quantlib_equivalent_start_date(self, day_counter, quantlib_day_counter):
+        assert self.generate_start_date_tests(day_counter, quantlib_day_counter)
 
     def test_actual_360_maturity(self):
         actual_360 = Actual360()
@@ -328,6 +358,28 @@ BUSINESS_252_BRAZIL_EXPECTED = [
     2.214285714286, 6.84126984127,
 ]  # fmt: skip
 
+# QuantLib's testAct366 / testAct36525 use the same consecutive dates as testBusiness252.
+ACTUAL_366_EXPECTED = [
+    0.00819672131147541, 1.27322404371585, 0.587431693989071, 1.0000000000000, 1.00273224043716, 0.0382513661202186,
+    0.191256830601093, 0.172131147540984, -0.16120218579235, 0.16120218579235, 0.19672131147541, 0.920765027322404,
+    2.21584699453552, 6.84426229508197,
+]  # fmt: skip
+ACTUAL_365_25_EXPECTED = [
+    0.0082135523613963, 1.27583846680356, 0.588637919233402, 1.00205338809035, 1.00479123887748, 0.0383299110198494,
+    0.191649555099247, 0.172484599589322, -0.161533196440794, 0.161533196440794, 0.197125256673511,
+    0.922655715263518, 2.22039698836413, 6.85831622176591,
+]  # fmt: skip
+
+ACTUAL_ACTUAL_AFB = [
+    ('1 Nov 2003', '1 May 2004', 0.497267759563),
+    ('1 Feb 1999', '1 Jul 1999', 0.410958904110),
+    ('1 Jul 1999', '1 Jul 2000', 1.000000000000),
+    ('15 Aug 2002', '15 Jul 2003', 0.915068493151),
+    ('15 Jul 2003', '15 Jan 2004', 0.504109589041),
+    ('30 Jul 1999', '30 Jan 2000', 0.504109589041),
+    ('30 Jan 2000', '30 Jun 2000', 0.41530054644),
+]
+
 
 def _check_day_counts(day_counter, cases):
     starts = np.array([_d(s) for s, _, _ in cases])
@@ -396,11 +448,70 @@ def test_nl_365_ignores_29_february():
     assert nl_365(np.datetime64('2023-06-30'), np.datetime64('2024-06-30')) == 1.0
 
 
+@pytest.mark.parametrize(
+    ('day_counter', 'expected'),
+    [
+        pytest.param(Actual366(), ACTUAL_366_EXPECTED, id='act_366'),
+        pytest.param(Actual36525(), ACTUAL_365_25_EXPECTED, id='act_365_25'),
+    ],
+)
+def test_quantlib_actual_fixed_cases(day_counter, expected):
+    dates = np.array([_d(x) for x in BUSINESS_252_BRAZIL_DATES])
+    np.testing.assert_allclose(day_counter(dates[:-1], dates[1:]), expected, rtol=0, atol=1e-12)
+
+
+def test_quantlib_actual_actual_afb_cases():
+    starts = np.array([_d(s) for s, _, _ in ACTUAL_ACTUAL_AFB])
+    ends = np.array([_d(e) for _, e, _ in ACTUAL_ACTUAL_AFB])
+    expected = np.array([x for _, _, x in ACTUAL_ACTUAL_AFB])
+    np.testing.assert_allclose(ActualActualAFB()(starts, ends), expected, rtol=0, atol=1e-10)
+    # reversing the dates flips the sign
+    np.testing.assert_allclose(ActualActualAFB()(ends, starts), -expected, rtol=0, atol=1e-10)
+
+
+def _add_months(dates: np.ndarray, months: int) -> np.ndarray:
+    """QuantLib's ``date + n*Months``: same day of month, clipped to the end of the target month."""
+    target_month = dates.astype('datetime64[M]') + np.timedelta64(months, 'M')
+    day_offset = (dates - dates.astype('datetime64[M]')).astype(int)
+    last_day_offset = ((target_month + 1).astype('datetime64[D]') - target_month.astype('datetime64[D]')).astype(
+        int
+    ) - 1
+    return target_month.astype('datetime64[D]') + np.minimum(day_offset, last_day_offset)
+
+
+@pytest.mark.parametrize(('months', 'expected'), [(3, 0.25), (6, 0.5), (12, 1.0)])
+def test_quantlib_simple_cases(months, expected):
+    """QuantLib's testSimple: every start date in 2002-2005 plus 3M / 6M / 1Y is exactly 1/4, 1/2 and 1 year."""
+    starts = np.arange(np.datetime64('2002-01-01'), np.datetime64('2006-01-01'))
+    np.testing.assert_allclose(SimpleDayCounter()(starts, _add_months(starts, months)), expected, rtol=0, atol=1e-12)
+
+
+def test_actual_include_last_day_adds_one_day():
+    start, end = np.datetime64('2024-01-01'), np.datetime64('2024-12-31')
+    assert Actual366(include_last_day=True)(start, end) == 1.0
+    assert Actual366(include_last_day=True).day_count(start, end) == Actual366().day_count(start, end) + 1
+    assert Actual36525(include_last_day=True).code == 'ACT/365.25(Inc)'
+    assert Actual366().is_additive and not Actual366(include_last_day=True).is_additive
+
+
 def test_scalar_inputs_return_scalars_and_arrays_keep_shape():
     start = np.datetime64('2020-01-31')
     ends = np.array([['2020-02-29', '2020-03-31'], ['2021-02-28', '2021-08-31']], dtype='datetime64[D]')
-    for day_counter in (Thirty360(), ThirtyE360(), ThirtyU360(), ThirtyE360ISDA(), Thirty365(), Nl365()):
+    day_counters = (
+        Thirty360(),
+        ThirtyE360(),
+        ThirtyU360(),
+        ThirtyE360ISDA(),
+        Thirty365(),
+        Nl365(),
+        Thirty360German(),
+        Thirty360Italian(),
+        Thirty360NASD(),
+        SimpleDayCounter(),
+    )
+    for day_counter in day_counters:
         assert np.ndim(day_counter.day_count(start, ends[0, 0])) == 0
         assert day_counter.day_count(start, ends).shape == (2, 2)
-    assert np.ndim(ActualActual()(start, ends[0, 0])) == 0
-    assert ActualActual()(start, ends).shape == (2, 2)
+    for day_counter in day_counters + (ActualActual(), ActualActualAFB()):
+        assert np.ndim(day_counter(start, ends[0, 0])) == 0
+        assert day_counter(start, ends).shape == (2, 2)

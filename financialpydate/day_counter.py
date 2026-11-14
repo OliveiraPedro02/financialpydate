@@ -120,17 +120,141 @@ def _is_last_day_of_feb_int(y: int, m: int, d: int) -> bool:
     return m == 2 and d == (29 if _is_leap_int(y) else 28)
 
 
+@numba.njit(cache=True, inline='always')
+def _days_in_month(y: int, m: int) -> int:
+    if m == 2:
+        return 29 if _is_leap_int(y) else 28
+    if m == 4 or m == 6 or m == 9 or m == 11:
+        return 30
+    return 31
+
+
+@numba.njit(cache=True, inline='always')
+def _bond_basis_days(y1: int, m1: int, d1: int, y2: int, m2: int, d2: int) -> int:
+    if d1 >= 30:
+        d1 = 30
+        if d2 > 30:
+            d2 = 30
+    return _thirty_360_days(y1, m1, d1, y2, m2, d2)
+
+
 @numba.njit(cache=True)
 def _thirty_360_bond_basis_kernel(start: npt.NDArray[np.int64], end: npt.NDArray[np.int64]) -> npt.NDArray[np.int64]:
     out = np.empty(start.size, np.int64)
     for i in range(start.size):
         y1, m1, d1 = _civil_from_days(start[i])
         y2, m2, d2 = _civil_from_days(end[i])
-        if d1 >= 30:
+        out[i] = _bond_basis_days(y1, m1, d1, y2, m2, d2)
+    return out
+
+
+@numba.njit(cache=True)
+def _thirty_360_italian_kernel(start: npt.NDArray[np.int64], end: npt.NDArray[np.int64]) -> npt.NDArray[np.int64]:
+    out = np.empty(start.size, np.int64)
+    for i in range(start.size):
+        y1, m1, d1 = _civil_from_days(start[i])
+        y2, m2, d2 = _civil_from_days(end[i])
+        d1 = min(d1, 30)
+        d2 = min(d2, 30)
+        # any day after the 27th of February counts as the 30th
+        if m1 == 2 and d1 > 27:
             d1 = 30
-            if d2 > 30:
-                d2 = 30
+        if m2 == 2 and d2 > 27:
+            d2 = 30
         out[i] = _thirty_360_days(y1, m1, d1, y2, m2, d2)
+    return out
+
+
+@numba.njit(cache=True)
+def _thirty_360_nasd_kernel(start: npt.NDArray[np.int64], end: npt.NDArray[np.int64]) -> npt.NDArray[np.int64]:
+    out = np.empty(start.size, np.int64)
+    for i in range(start.size):
+        y1, m1, d1 = _civil_from_days(start[i])
+        y2, m2, d2 = _civil_from_days(end[i])
+        d1 = min(d1, 30)
+        if d2 == 31:
+            if d1 >= 30:
+                d2 = 30
+            else:
+                # the 31st counts as the 1st of the following month
+                d2 = 1
+                m2 += 1
+        out[i] = _thirty_360_days(y1, m1, d1, y2, m2, d2)
+    return out
+
+
+@numba.njit(cache=True)
+def _simple_kernel(start: npt.NDArray[np.int64], end: npt.NDArray[np.int64]) -> npt.NDArray[np.float64]:
+    """Whole months count as 1/12 of a year; otherwise falls back to 30/360 bond basis."""
+    out = np.empty(start.size, np.float64)
+    for i in range(start.size):
+        y1, m1, d1 = _civil_from_days(start[i])
+        y2, m2, d2 = _civil_from_days(end[i])
+        if (
+            d1 == d2
+            or (d1 > d2 and d2 == _days_in_month(y2, m2))  # e.g. 30 Aug -> 28 Feb
+            or (d1 < d2 and d1 == _days_in_month(y1, m1))  # e.g. 28 Feb -> 30 Aug
+        ):
+            out[i] = (y2 - y1) + (m2 - m1) / 12.0
+        else:
+            out[i] = _bond_basis_days(y1, m1, d1, y2, m2, d2) / 360.0
+    return out
+
+
+@numba.njit(cache=True, inline='always')
+def _years_earlier_afb(y: int, m: int, d: int, years: int) -> int:
+    """
+    The date ``years`` (>= 1) years before (y, m, d), as QuantLib's AFB convention steps back one year at a time
+    (29 Feb -> 28 Feb, and 28 Feb landing in a leap year -> 29 Feb). After any number of such steps, 28 and 29 February
+    both end up on the last day of February, and every other date keeps its month and day.
+    """
+    target_year = y - years
+    if m == 2 and d >= 28:
+        d = 29 if _is_leap_int(target_year) else 28
+    return _days_from_civil(target_year, m, d)
+
+
+@numba.njit(cache=True, inline='always')
+def _afb_year_fraction(d1: int, d2: int) -> float:
+    """Actual/Actual AFB for ``d1 < d2``: whole years counted back from ``d2``, then the stub over 365 or 366."""
+    y1 = _civil_from_days(d1)[0]
+    y2, m2, dd2 = _civil_from_days(d2)
+    # Stepping back y2 - y1 years lands in d1's year: either on/after d1 (that many whole years) or before it (one less).
+    whole_years = y2 - y1
+    new_d2 = d2
+    if whole_years > 0:
+        new_d2 = _years_earlier_afb(y2, m2, dd2, whole_years)
+        if new_d2 < d1:
+            whole_years -= 1
+            new_d2 = d2 if whole_years == 0 else _years_earlier_afb(y2, m2, dd2, whole_years)
+
+    denominator = 365.0
+    y_new_d2 = _civil_from_days(new_d2)[0]
+    if _is_leap_int(y_new_d2):
+        feb_29 = _days_from_civil(y_new_d2, 2, 29)
+        if new_d2 > feb_29 and d1 <= feb_29:
+            denominator += 1.0
+    else:
+        if _is_leap_int(y1):
+            feb_29 = _days_from_civil(y1, 2, 29)
+            if new_d2 > feb_29 and d1 <= feb_29:
+                denominator += 1.0
+
+    return whole_years + (new_d2 - d1) / denominator
+
+
+@numba.njit(cache=True)
+def _actual_actual_afb_kernel(start: npt.NDArray[np.int64], end: npt.NDArray[np.int64]) -> npt.NDArray[np.float64]:
+    out = np.empty(start.size, np.float64)
+    for i in range(start.size):
+        s = start[i]
+        e = end[i]
+        if s == e:
+            out[i] = 0.0
+        elif s < e:
+            out[i] = _afb_year_fraction(s, e)
+        else:
+            out[i] = -_afb_year_fraction(e, s)
     return out
 
 
@@ -368,6 +492,52 @@ class Actual365(ActualDayCounter):
         return self.day_count(start_date, end_date) / 365.0
 
 
+class Actual364(ActualDayCounter):
+    @property
+    def code(self):
+        return 'ACT/364'
+
+    def __call__(self, start_date, end_date, *args, **kwargs):
+        return self.day_count(start_date, end_date) / 364.0
+
+
+class _ActualFixedIncludeLastDay(ActualDayCounter):
+    """Actual days over a fixed denominator, optionally counting the end date as well (QuantLib ``includeLastDay``)."""
+
+    __slots__ = 'include_last_day'
+    _denominator: float
+    _code: str
+
+    def __init__(self, include_last_day: bool = False):
+        self.include_last_day: bool = include_last_day
+
+    @property
+    def code(self):
+        return f'{self._code}(Inc)' if self.include_last_day else self._code
+
+    def day_count(self, start_date, end_date, *args, **kwargs):
+        days = super().day_count(start_date, end_date)
+        return days + 1 if self.include_last_day else days
+
+    def __call__(self, start_date, end_date, *args, **kwargs):
+        return self.day_count(start_date, end_date) / self._denominator
+
+    @property
+    def is_additive(self) -> bool:
+        # with the last day included, splitting a period counts the split date twice
+        return not self.include_last_day
+
+
+class Actual366(_ActualFixedIncludeLastDay):
+    _denominator = 366.0
+    _code = 'ACT/366'
+
+
+class Actual36525(_ActualFixedIncludeLastDay):
+    _denominator = 365.25
+    _code = 'ACT/365.25'
+
+
 class Nl365(DayCounter):
     """
     Actual/365 No Leap: actual days, ignoring every 29 February in the period (QuantLib's
@@ -421,6 +591,25 @@ class ActualActual(ActualDayCounter):
     def __call__(self, start_date, end_date, *args, **kwargs):
         start, end, shape = _as_day_numbers(start_date, end_date)
         return _restore_shape(_actual_actual_isda_kernel(start, end), shape)
+
+
+class ActualActualAFB(ActualDayCounter):
+    """
+    Actual/Actual (AFB, also called Euro): whole years counted back from the end date, plus the remaining stub over 366
+    if it contains a 29 February, otherwise 365.
+    """
+
+    @property
+    def code(self):
+        return 'ACT/ACT AFB'
+
+    def __call__(self, start_date, end_date, *args, **kwargs):
+        start, end, shape = _as_day_numbers(start_date, end_date)
+        return _restore_shape(_actual_actual_afb_kernel(start, end), shape)
+
+    @property
+    def is_additive(self) -> bool:
+        return False
 
 
 class Thirty360(DayCounter):
@@ -513,6 +702,64 @@ class ThirtyU360(DayCounter):
     def __call__(self, start_date, end_date, *args, **kwargs):
         """Returns fraction in years between start_date and end_date, using Thirty/360 convention"""
         return self.day_count(start_date, end_date) / 360
+
+
+class Thirty360German(ThirtyE360ISDA):
+    """30/360 German. Same rules as 30E/360 ISDA (QuantLib implements both identically)."""
+
+    @property
+    def code(self):
+        return '30/360 German'
+
+
+class Thirty360Italian(DayCounter):
+    """30/360 Italian: like 30E/360, and any day after 27 February also counts as the 30th."""
+
+    @property
+    def code(self):
+        return '30/360 Italian'
+
+    def day_count(self, start_date, end_date, *args, **kwargs):
+        start, end, shape = _as_day_numbers(start_date, end_date)
+        return _restore_shape(_thirty_360_italian_kernel(start, end), shape)
+
+    def __call__(self, start_date, end_date, *args, **kwargs):
+        return self.day_count(start_date, end_date) / 360
+
+
+class Thirty360NASD(DayCounter):
+    """30/360 NASD: an end date on the 31st counts as the 30th if the start is the 30th/31st, otherwise as the 1st of
+    the next month."""
+
+    @property
+    def code(self):
+        return '30/360 NASD'
+
+    def day_count(self, start_date, end_date, *args, **kwargs):
+        start, end, shape = _as_day_numbers(start_date, end_date)
+        return _restore_shape(_thirty_360_nasd_kernel(start, end), shape)
+
+    def __call__(self, start_date, end_date, *args, **kwargs):
+        return self.day_count(start_date, end_date) / 360
+
+
+class SimpleDayCounter(DayCounter):
+    """
+    Whole-month periods count as an exact number of twelfths of a year (end of month to end of month included);
+    anything else falls back to 30/360 bond basis. Day counts are always 30/360 bond basis.
+    """
+
+    @property
+    def code(self):
+        return 'Simple'
+
+    def day_count(self, start_date, end_date, *args, **kwargs):
+        start, end, shape = _as_day_numbers(start_date, end_date)
+        return _restore_shape(_thirty_360_bond_basis_kernel(start, end), shape)
+
+    def __call__(self, start_date, end_date, *args, **kwargs):
+        start, end, shape = _as_day_numbers(start_date, end_date)
+        return _restore_shape(_simple_kernel(start, end), shape)
 
 
 class OneOne(ActualDayCounter):
