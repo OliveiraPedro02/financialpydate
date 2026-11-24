@@ -4439,3 +4439,80 @@ def test_all_dates():
         False,
     )
     assert (expected == output).all()
+
+
+def _null_schedule(start: str, end: str, months: int, end_of_month: bool, rule: Rule):
+    return all_calendars['NullCalendar'].make_schedule(
+        effective_date=np.datetime64(start),
+        termination_date=np.datetime64(end),
+        period=np.timedelta64(months, 'M'),
+        convention=Convention.unadjusted,
+        termination_convention=Convention.unadjusted,
+        end_of_month=end_of_month,
+        rule=rule,
+    )
+
+
+@pytest.mark.parametrize(
+    'start, end, months, end_of_month, rule, expected',
+    [
+        (
+            '2026-01-31',
+            '2026-12-31',
+            1,
+            False,
+            Rule.forward,
+            [
+                '2026-01-31',
+                '2026-02-28',
+                '2026-03-31',
+                '2026-04-30',
+                '2026-05-31',
+                '2026-06-30',
+                '2026-07-31',
+                '2026-08-31',
+                '2026-09-30',
+                '2026-10-31',
+                '2026-11-30',
+                '2026-12-31',
+            ],
+        ),
+        (
+            '2026-04-30',
+            '2026-12-31',
+            1,
+            True,
+            Rule.forward,
+            [
+                '2026-04-30',
+                '2026-05-31',
+                '2026-06-30',
+                '2026-07-31',
+                '2026-08-31',
+                '2026-09-30',
+                '2026-10-31',
+                '2026-11-30',
+                '2026-12-31',
+            ],
+        ),
+        (
+            '2026-01-31',
+            '2028-01-31',
+            6,
+            False,
+            Rule.backward,
+            ['2026-01-31', '2026-07-31', '2027-01-31', '2027-07-31', '2028-01-31'],
+        ),
+        (
+            '2026-01-31',
+            '2028-07-31',
+            6,
+            True,
+            Rule.backward,
+            ['2026-01-31', '2026-07-31', '2027-01-31', '2027-07-31', '2028-01-31', '2028-07-31'],
+        ),
+    ],
+)
+def test_schedule_keeps_31_july(start, end, months, end_of_month, rule, expected):
+    output = _null_schedule(start, end, months, end_of_month, rule)
+    np.testing.assert_array_equal(output, np.array(expected, dtype='datetime64[D]'))
