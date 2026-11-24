@@ -8,6 +8,7 @@ from financialpydate.calendars.all_calendar import all_calendars
 from financialpydate.rule import Rule
 from financialpydate.convention import Convention
 from financialpydate.financial_calendar import join_calendars, FinancialCalendar
+from financialpydate.update_files.get_holidays import split_weekends
 
 
 def previous_twentieth(date: np.datetime64, rule: Rule):
@@ -56,12 +57,32 @@ def test_backward_convention():
     assert terminantion_date == dates[-1]
 
 
-def test_join_calendars():
+@pytest.mark.parametrize('second', ['Brazil', "China['IB']", "SaudiArabia['Tadawul']"])
+def test_join_calendars(second):
     calendar_one = all_calendars['Target']
-    calendar_two = all_calendars['Brazil']
-    new_calendar = join_calendars([all_calendars['Target'], all_calendars['Brazil']])
-    assert np.all(new_calendar.weekmask == np.repeat(True, 7))
-    assert np.all(new_calendar.holidays == np.unique(np.r_[calendar_one.holidays, calendar_two.holidays]))
+    calendar_two = all_calendars[second]
+    new_calendar = join_calendars([calendar_one, calendar_two])
+    assert np.all(new_calendar.weekmask == (calendar_one.weekmask & calendar_two.weekmask))
+    days = np.arange(np.datetime64('1901-01-01'), np.datetime64('2200-01-01'))
+    expected = np.is_busday(days, busdaycal=calendar_one.numpy_calendar) & np.is_busday(
+        days, busdaycal=calendar_two.numpy_calendar
+    )
+    assert np.array_equal(np.is_busday(days, busdaycal=new_calendar.numpy_calendar), expected)
+
+
+def test_split_weekends_keeps_business_days():
+    days = np.arange(np.datetime64('1901-01-01'), np.datetime64('2200-01-01'))
+    weekend = np.is_busday(days, weekmask='0000011')
+    holidays = np.array(['2024-12-25', '2025-01-01'], dtype='datetime64[D]')
+    working_saturday = np.datetime64('2024-10-12')
+    non_business = np.setdiff1d(np.r_[days[weekend], holidays], working_saturday)
+
+    weekmask, split_holidays = split_weekends(non_business)
+
+    assert weekmask == '1111110'  # Saturday has a working exception, so only Sunday becomes weekend
+    calendar = np.busdaycalendar(weekmask=weekmask, holidays=split_holidays)
+    assert np.array_equal(~np.is_busday(days, busdaycal=calendar), np.isin(days, non_business))
+    assert not np.isin(split_holidays, days[np.is_busday(days, weekmask='0000001')]).any()  # no Sundays listed
 
 
 def test_unadjusted_offsets():

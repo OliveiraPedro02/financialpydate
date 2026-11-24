@@ -1,78 +1,112 @@
-import QuantLib as ql
+"""
+Regenerate ``financialpydate/calendars`` from QuantLib.
+
+Run from the repository root with ``uv run python -m financialpydate.update_files.get_holidays``.
+
+Each calendar is stored as a numpy weekmask plus the holidays that fall on its working weekdays. Listing every
+weekend as a holiday (with ``weekmask='1111111'``) gives the same business days but makes ``np.busday_offset`` about 3x
+and ``np.busday_count`` about 1.5x slower. A weekday is only marked as weekend when it is a non-business day on every
+date of the range: calendars with working weekend days (China IB) or whose weekend changed (Israel, Saudi Arabia) keep
+those days in the holiday list.
+"""
+
 import re
+import subprocess
+from pathlib import Path
 
-minimum_date = ql.Date(1, 1, 1901)
-maximum_date = ql.Date(109573)
+import numpy as np
+import numpy.typing as npt
 
+CALENDARS_DIR = Path(__file__).resolve().parents[1] / 'calendars'
+FIRST_DATE = np.datetime64('1901-01-01', 'D')
+END_DATE = np.datetime64('2200-01-01', 'D')  # exclusive: QuantLib's last date, Date(109573), is 2199-12-31
 
-def get_holidays(calendar: ql.Calendar) -> tuple:
-    try:
-        return tuple(
-            date.to_date().strftime('%Y-%m-%d')
-            for date in calendar.holidayList(minimum_date, maximum_date, includeWeekEnds=True)
-        )
-    except RuntimeError:
-        print(f'{calendar.name()} has no holidays')
-        return tuple()
-
-
-calendars = {
-    "Argentina['Merval']": ql.Argentina(ql.Argentina.Merval),
-    'Australia': ql.Australia(),
-    'Brazil': ql.Brazil(),
-    "Brazil['Exchange']": ql.Brazil(ql.Brazil.Exchange),
-    "Brazil['Settlement']": ql.Brazil(ql.Brazil.Settlement),
-    "Canada['Settlement']": ql.Canada(ql.Canada.Settlement),
-    "Canada['TSX']": ql.Canada(ql.Canada.TSX),
-    "China['IB']": ql.China(ql.China.IB),
-    "China['SSE']": ql.China(ql.China.SSE),
-    "CzechRepublic['PSE']": ql.CzechRepublic(),
-    "France['Exchange']": ql.France(ql.France.Exchange),
-    "France['Settlement']": ql.France(ql.France.Settlement),
-    'Germany': ql.Germany(),
-    "Germany['Eurex']": ql.Germany(ql.Germany.Eurex),
-    "Germany['FrankfurtStockExchange']": ql.Germany(ql.Germany.FrankfurtStockExchange),
-    "Germany['Settlement']": ql.Germany(ql.Germany.Settlement),
-    "Germany['Xetra']": ql.Germany(ql.Germany.Xetra),
-    "HongKong['HKEx']": ql.HongKong(),
-    "Iceland['ICEX']": ql.Iceland(),
-    "India['NSE']": ql.India(),
-    "Indonesia['BEJ']": ql.Indonesia(ql.Indonesia.BEJ),
-    "Indonesia['JSX']": ql.Indonesia(ql.Indonesia.JSX),
-    "Israel['Settlement']": ql.Israel(ql.Israel.Settlement),
-    "Israel['TASE']": ql.Israel(ql.Israel.TASE),
-    "Italy['Exchange']": ql.Italy(ql.Italy.Exchange),
-    "Italy['Settlement']": ql.Italy(ql.Italy.Settlement),
-    'Japan': ql.Japan(),
-    "Mexico['BMV']": ql.Mexico(ql.Mexico.BMV),
-    'NullCalendar': ql.NullCalendar(),
-    "Russia['MOEX']": ql.Russia(ql.Russia.MOEX),
-    "Russia['Settlement']": ql.Russia(ql.Russia.Settlement),
-    "SaudiArabia['Tadawul']": ql.SaudiArabia(ql.SaudiArabia.Tadawul),
-    "Singapore['SGX']": ql.Singapore(ql.Singapore.SGX),
-    "Slovakia['BSSE']": ql.Slovakia(ql.Slovakia.BSSE),
-    "SouthKorea['KRX']": ql.SouthKorea(ql.SouthKorea.KRX),
-    "SouthKorea['Settlement']": ql.SouthKorea(ql.SouthKorea.Settlement),
-    'Sweden': ql.Sweden(),
-    'Switzerland': ql.Switzerland(),
-    "Taiwan['TSEC']": ql.Taiwan(ql.Taiwan.TSEC),
-    'Target': ql.TARGET(),
-    "Ukraine['USE']": ql.Ukraine(ql.Ukraine.USE),
-    'UnitedKingdom': ql.UnitedKingdom(),
-    "UnitedKingdom['Exchange']": ql.UnitedKingdom(ql.UnitedKingdom.Exchange),
-    "UnitedKingdom['Metals']": ql.UnitedKingdom(ql.UnitedKingdom.Metals),
-    "UnitedKingdom['Settlement']": ql.UnitedKingdom(ql.UnitedKingdom.Settlement),
-    "UnitedStates['FederalReserve']": ql.UnitedStates(ql.UnitedStates.FederalReserve),
-    "UnitedStates['GovernmentBond']": ql.UnitedStates(ql.UnitedStates.GovernmentBond),
-    "UnitedStates['LiborImpact']": ql.UnitedStates(ql.UnitedStates.LiborImpact),
-    "UnitedStates['NERC']": ql.UnitedStates(ql.UnitedStates.NERC),
-    "UnitedStates['NYSE']": ql.UnitedStates(ql.UnitedStates.NYSE),
-    "UnitedStates['Settlement']": ql.UnitedStates(ql.UnitedStates.Settlement),
-    'WeekendsOnly': ql.WeekendsOnly(),
+CALENDARS = {
+    "Argentina['Merval']": ('Argentina', 'Merval'),
+    'Australia': ('Australia', None),
+    'Brazil': ('Brazil', None),
+    "Brazil['Exchange']": ('Brazil', 'Exchange'),
+    "Brazil['Settlement']": ('Brazil', 'Settlement'),
+    "Canada['Settlement']": ('Canada', 'Settlement'),
+    "Canada['TSX']": ('Canada', 'TSX'),
+    "China['IB']": ('China', 'IB'),
+    "China['SSE']": ('China', 'SSE'),
+    "CzechRepublic['PSE']": ('CzechRepublic', None),
+    "France['Exchange']": ('France', 'Exchange'),
+    "France['Settlement']": ('France', 'Settlement'),
+    'Germany': ('Germany', None),
+    "Germany['Eurex']": ('Germany', 'Eurex'),
+    "Germany['FrankfurtStockExchange']": ('Germany', 'FrankfurtStockExchange'),
+    "Germany['Settlement']": ('Germany', 'Settlement'),
+    "Germany['Xetra']": ('Germany', 'Xetra'),
+    "HongKong['HKEx']": ('HongKong', None),
+    "Iceland['ICEX']": ('Iceland', None),
+    "India['NSE']": ('India', None),
+    "Indonesia['BEJ']": ('Indonesia', 'BEJ'),
+    "Indonesia['JSX']": ('Indonesia', 'JSX'),
+    "Israel['Settlement']": ('Israel', 'Settlement'),
+    "Israel['TASE']": ('Israel', 'TASE'),
+    "Italy['Exchange']": ('Italy', 'Exchange'),
+    "Italy['Settlement']": ('Italy', 'Settlement'),
+    'Japan': ('Japan', None),
+    "Mexico['BMV']": ('Mexico', 'BMV'),
+    'NullCalendar': ('NullCalendar', None),
+    "Russia['MOEX']": ('Russia', 'MOEX'),
+    "Russia['Settlement']": ('Russia', 'Settlement'),
+    "SaudiArabia['Tadawul']": ('SaudiArabia', 'Tadawul'),
+    "Singapore['SGX']": ('Singapore', 'SGX'),
+    "Slovakia['BSSE']": ('Slovakia', 'BSSE'),
+    "SouthKorea['KRX']": ('SouthKorea', 'KRX'),
+    "SouthKorea['Settlement']": ('SouthKorea', 'Settlement'),
+    'Sweden': ('Sweden', None),
+    'Switzerland': ('Switzerland', None),
+    "Taiwan['TSEC']": ('Taiwan', 'TSEC'),
+    'Target': ('TARGET', None),
+    "Ukraine['USE']": ('Ukraine', 'USE'),
+    'UnitedKingdom': ('UnitedKingdom', None),
+    "UnitedKingdom['Exchange']": ('UnitedKingdom', 'Exchange'),
+    "UnitedKingdom['Metals']": ('UnitedKingdom', 'Metals'),
+    "UnitedKingdom['Settlement']": ('UnitedKingdom', 'Settlement'),
+    "UnitedStates['FederalReserve']": ('UnitedStates', 'FederalReserve'),
+    "UnitedStates['GovernmentBond']": ('UnitedStates', 'GovernmentBond'),
+    "UnitedStates['LiborImpact']": ('UnitedStates', 'LiborImpact'),
+    "UnitedStates['NERC']": ('UnitedStates', 'NERC'),
+    "UnitedStates['NYSE']": ('UnitedStates', 'NYSE'),
+    "UnitedStates['Settlement']": ('UnitedStates', 'Settlement'),
+    'WeekendsOnly': ('WeekendsOnly', None),
 }
 
 
-holiday_list_string = {key: get_holidays(calendar) for key, calendar in calendars.items()}
+def quantlib_non_business_days() -> dict[str, npt.NDArray[np.datetime64]]:
+    """Every non-business day (weekends included) of each calendar in [FIRST_DATE, END_DATE), from QuantLib."""
+    import QuantLib as ql
+
+    first, last = ql.Date(1, 1, 1901), ql.Date(31, 12, 2199)
+    result = {}
+    for key, (class_name, market) in CALENDARS.items():
+        ql_class = getattr(ql, class_name)
+        calendar = ql_class(getattr(ql_class, market)) if market else ql_class()
+        try:
+            dates = [d.ISO() for d in calendar.holidayList(first, last, includeWeekEnds=True)]
+        except RuntimeError:
+            dates = []
+        result[key] = np.array(dates, dtype='datetime64[D]')
+    return result
+
+
+def split_weekends(non_business_days: npt.NDArray[np.datetime64]) -> tuple[str, npt.NDArray[np.datetime64]]:
+    """
+    Split a calendar's non-business days into a numpy weekmask and the remaining holidays.
+
+    A weekday is weekend (``'0'`` in the mask) only if it is a non-business day on every date of the range, so the
+    pair reproduces exactly the same business days in [FIRST_DATE, END_DATE).
+    """
+    days = np.arange(FIRST_DATE, END_DATE)
+    off = np.isin(days, non_business_days)
+    weekday = (days.astype(np.int64) + 3) % 7  # 1970-01-01 was a Thursday; 0 is Monday, as in numpy's weekmask
+    always_off = np.array([off[weekday == k].all() for k in range(7)])
+    weekmask = ''.join('0' if is_weekend else '1' for is_weekend in always_off)
+    return weekmask, days[off & ~always_off[weekday]]
 
 
 def get_file_name(key: str) -> str:
@@ -91,39 +125,28 @@ def get_class_name(key: str) -> str:
     return base_name
 
 
+def _calendar_source(weekmask: str, holidays: npt.NDArray[np.datetime64]) -> str:
+    dates = ''.join(f"'{date}'," for date in holidays.astype(str))
+    return f"FinancialCalendar(holidays=np.array(({dates}), dtype='datetime64[D]'), weekmask='{weekmask}')"
+
+
+def write_calendars(non_business_days: dict[str, npt.NDArray[np.datetime64]], directory: Path = CALENDARS_DIR) -> None:
+    """Write one module per calendar, ``all_calendar.py`` and ``__init__.py``, then format them with ruff."""
+    header = 'import numpy as np\nfrom financialpydate import FinancialCalendar\n\n\n'
+    sources = {key: _calendar_source(*split_weekends(days)) for key, days in non_business_days.items()}
+    imports = []
+    for key, source in sources.items():
+        file_name, class_name = get_file_name(key), get_class_name(key)
+        imports.append(f'from financialpydate.calendars.{file_name} import {class_name}\n')
+        (directory / f'{file_name}.py').write_text(f'{header}{class_name}: FinancialCalendar = {source}\n')
+
+    entries = ''.join(f'    "{key}": {source},\n' for key, source in sources.items())
+    (directory / 'all_calendar.py').write_text(f'{header}all_calendars = {{\n{entries}}}\n')
+    (directory / '__init__.py').write_text(
+        ''.join(imports) + 'from financialpydate.calendars.all_calendar import all_calendars\n'
+    )
+    subprocess.run(['ruff', 'format', '--quiet', str(directory)], check=True)
+
+
 if __name__ == '__main__':
-    init_update = []
-    for key, value in holiday_list_string.items():
-        file_name = get_file_name(key)
-        class_name = get_class_name(key)
-        init_update.append(f'from financialpydate.calendars.{file_name} import {class_name}\n')
-        with open('../../financialpydate/calendars/' + file_name + '.py', 'w') as file:
-            file.write(
-                f"""import numpy as np
-from financialpydate import FinancialCalendar
-
-    
-{class_name}: FinancialCalendar = FinancialCalendar(holidays=np.array({value}, dtype="datetime64[D]"))
-"""
-            )
-
-    with open('../calendars/all_calendar.py', 'w') as file:
-        to_write = """import numpy as np
-from financialpydate import FinancialCalendar
-
-all_calendars = {
-"""
-
-        for key, value in holiday_list_string.items():
-            to_write += f'   "{key}": FinancialCalendar(holidays=np.array({value}, dtype="datetime64[D]")),\n'
-
-        to_write += '}'
-        file.write(to_write)
-
-    with open('../calendars/__init__.py', 'w') as file:
-        for txt in init_update:
-            file.write(txt)
-        file.write('from financialpydate.calendars.all_calendar import all_calendars')
-
-
-# holiday_list_numpy = {key: FinancialCalendar(holidays=np.array(value, dtype='datetime64[D]'))}
+    write_calendars(quantlib_non_business_days())
