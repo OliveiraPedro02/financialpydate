@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from financialpydate.date_handler import month
-from financialpydate.calendars.all_calendar import all_calendars
+from financialpydate.calendars import all_calendars
 from financialpydate.rule import Rule
 from financialpydate.convention import Convention
 from financialpydate.financial_calendar import join_calendars, FinancialCalendar

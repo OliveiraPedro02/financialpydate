@@ -27,7 +27,7 @@ from financialpydate.day_counter import (
 )
 
 # from update_files.get_holidays import holiday_list_numpy
-from financialpydate.calendars.all_calendar import all_calendars
+from financialpydate.calendars import all_calendars
 
 # (ours, QuantLib's) for the conventions checked on the date grids of every `BaseStructure` subclass.
 QUANTLIB_EQUIVALENTS = [
