@@ -40,6 +40,15 @@ def _is_leap_int(y: int) -> bool:
 
 
 @numba.njit(cache=True, inline='always')
+def _days_in_month(y: int, m: int) -> int:
+    if m == 2:
+        return 29 if _is_leap_int(y) else 28
+    if m == 4 or m == 6 or m == 9 or m == 11:
+        return 30
+    return 31
+
+
+@numba.njit(cache=True, inline='always')
 def _civil_from_days(z: int) -> tuple[int, int, int]:
     """
     Convert days since 1970-01-01 into (year, month, day) using integer arithmetic only.
@@ -167,29 +176,24 @@ def _is_last_day_of_feb(date):
 
 
 def add_month_day(dates: DateArrayType, day: int | np.uint64) -> DateArrayType:
+    """
+    Move each first-of-month date to ``day`` of its month, capped at the month's last day.
+
+    E.g. ``day=31`` gives 31 Jan, 28 Feb (29 in a leap year), 31 Mar, 30 Apr, ..., 31 Jul, 31 Aug, ...
+    """
     if day <= 28:
         return dates + np.timedelta64(day - 1, 'D')
-    leap_year = isleap(year(dates))
-    months = month(dates)
-    days = nb_add_month_day(months, leap_year, day)
-    return dates + days.astype('timedelta64[D]')
+    first_days = np.ascontiguousarray(dates, dtype='datetime64[D]')
+    shape = first_days.shape
+    out = nb_add_month_day(first_days.reshape(-1).view(np.int64), day)
+    return out.view('datetime64[D]').reshape(shape)
 
 
 @numba.njit(cache=True)
-def nb_add_month_day(
-    months: IntArrayType, is_leap_year: npt.NDArray[np.bool_], day: npt.NDArray[np.uint64]
-) -> npt.NDArray[np.uint64]:
-    max_days = np.minimum(np.array([28, 29, 30, 31], np.int64), day) - 1
-    days = np.empty_like(months, np.uint64)
-    for i, _month in enumerate(months):
-        if _month == 2:
-            if is_leap_year[i]:
-                days[i] = max_days[1]
-            else:
-                days[i] = max_days[0]
-        else:
-            if _month % 2 != 0 and _month < 7 or _month % 2 == 0 and _month > 7:
-                days[i] = max_days[3]
-            else:
-                days[i] = max_days[2]
-    return days
+def nb_add_month_day(first_days: npt.NDArray[np.int64], day: int) -> npt.NDArray[np.int64]:
+    """Single pass over day numbers: ``first + min(day, days in that month) - 1``."""
+    out = np.empty(first_days.size, np.int64)
+    for i in range(first_days.size):
+        y, m, _ = _civil_from_days(first_days[i])
+        out[i] = first_days[i] + min(_days_in_month(y, m), day) - 1
+    return out

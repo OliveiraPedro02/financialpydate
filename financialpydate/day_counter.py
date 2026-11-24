@@ -6,7 +6,7 @@ import numba
 import numpy as np
 import numpy.typing as npt
 
-from financialpydate.date_handler import _civil_from_days, _days_from_civil, _is_leap_int
+from financialpydate.date_handler import _civil_from_days, _days_from_civil, _days_in_month, _is_leap_int
 from financialpydate import FinancialCalendar
 from financialpydate.financial_calendar import BUSINESS_DAY_TABLE_START, cumulative_business_days
 
@@ -118,15 +118,6 @@ def _thirty_360_days(y1: int, m1: int, d1: int, y2: int, m2: int, d2: int) -> in
 @numba.njit(cache=True, inline='always')
 def _is_last_day_of_feb_int(y: int, m: int, d: int) -> bool:
     return m == 2 and d == (29 if _is_leap_int(y) else 28)
-
-
-@numba.njit(cache=True, inline='always')
-def _days_in_month(y: int, m: int) -> int:
-    if m == 2:
-        return 29 if _is_leap_int(y) else 28
-    if m == 4 or m == 6 or m == 9 or m == 11:
-        return 30
-    return 31
 
 
 @numba.njit(cache=True, inline='always')

@@ -30,11 +30,12 @@ pythonpath = [
 Source = "https://github.com/OliveiraPedro02/financialpydate"
 
 [tool.setuptools.packages.find]
-include = ["financialpydate"]
+include = ["financialpydate", "financialpydate.calendars"]
 exclude = ["financialpydate.update_files*"]
 
 [tool.setuptools.package-data]
 "financialpydate" = ["py.typed"]
+"financialpydate.calendars" = ["*.npz"]
 
 [tool.ruff]
 line-length = 120
