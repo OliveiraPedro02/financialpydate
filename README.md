@@ -109,13 +109,3 @@ Loading the Brazil calendar in a new process takes 8 ms after `import financialp
 
 Measured on an Intel Core i7-11800H with Python 3.14, numpy 2.4 and numba 0.64. Reproduce with
 `uv run python benchmarks/benchmark.py`.
-
-## Updating the calendars
-
-Holidays come from QuantLib. `financialpydate/update_files/get_holidays.py` writes every file in
-`financialpydate/calendars` (holidays and weekmasks in `holidays.npz`, and the `__init__.py` that loads them), so
-change the generator rather than the generated files, then run it from the repository root:
-
-```shell
-uv run python -m financialpydate.update_files.get_holidays
-```
