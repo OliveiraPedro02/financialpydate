@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools >=61", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools >=64", "setuptools_scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "financialpydate"
-version = "0.0.4"
+dynamic = ["version"]
 
 authors = [
     { name = "Pedro Henrique Rezende Oliveira", email = "pedro-henrique.rezende@solvaypostgrad.net" },
@@ -28,6 +28,12 @@ pythonpath = [
 
 [project.urls]
 Source = "https://github.com/OliveiraPedro02/financialpydate"
+
+[tool.setuptools_scm]
+
+[tool.uv]
+# Reinstall the project when the git commit or tags change, so the installed version follows `git tag`.
+cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
 
 [tool.setuptools.packages.find]
 include = ["financialpydate", "financialpydate.calendars"]

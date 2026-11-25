@@ -110,7 +110,6 @@ wheels = [
 
 [[package]]
 name = "financialpydate"
-version = "0.0.4"
 source = { editable = "." }
 dependencies = [
     { name = "numba" },
