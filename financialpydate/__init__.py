@@ -1,6 +1,11 @@
 """Financial PyDate, high performance framework to deal with financial dates and create schedules"""
 
-__version__ = "0.0.4"
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version(__name__)  # set at install time from the git tag, see pyproject.toml
+except PackageNotFoundError:  # imported from a source checkout that was never installed
+    __version__ = '0.0.0'
 
 
 from financialpydate.rule import Rule as Rule

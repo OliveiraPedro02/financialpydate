@@ -8,3 +8,5 @@ dist
 site
 env
 venv
+*.egg-info
+build
